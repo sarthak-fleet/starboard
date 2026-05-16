@@ -61,9 +61,24 @@ pnpm db:migrate            # npx tsx src/db/migrate.ts
 pnpm db:seed-embeddings    # npx tsx src/db/seed-embeddings.ts
 ```
 
+## Embedding dimension contract
+
+Canonical model: `@cf/baai/bge-base-en-v1.5` (Cloudflare Workers AI), **768 dimensions**.
+
+Three files are pinned to the same dimension and must change together:
+
+1. `src/lib/embeddings.ts` — `EMBEDDING_MODEL` and `EMBEDDING_DIM`. `generateEmbeddings()` asserts every returned vector matches `EMBEDDING_DIM` and throws on mismatch.
+2. `src/db/schema.sql` — `repo_embeddings.embedding F32_BLOB(<dim>)` plus the `libsql_vector_idx` cosine index built on it.
+3. `src/db/migrate.ts` — `ensureEmbeddingDimension()` reads `PRAGMA table_info(repo_embeddings)`, parses the `F32_BLOB(<n>)` column type, and drops the table + vector index when `<n>` doesn't equal `EMBEDDING_DIM`. The `CREATE TABLE IF NOT EXISTS` DDL in `schema.sql` then recreates them at the right dimension on the same migrate run.
+
+The seed-popular GitHub Action runs `pnpm db:migrate` before `pnpm db:seed-popular`, so dimension drift heals on the next daily run without manual DB surgery. Don't hand-edit the Turso table — the migrate path is the only safe one. To change the model:
+
+1. Update all three files above to the new dimension.
+2. Land the change on `main` — the next scheduled `seed-popular` run drops the old table, recreates it, and re-embeds from scratch (up to `SEED_DAILY_LIMIT` per day until the pool is refilled).
+
 ## Architecture notes
 - **NO ORM** — raw SQL via `@libsql/client`. Schema in `src/db/schema.sql`. Apply with `db:migrate`.
-- **Vector search**: `repo_embeddings` table stores `F32_BLOB(768)` with `libsql_vector_idx` cosine index. 768-dim embeddings for semantic search. Seed with `db:seed-embeddings`.
+- **Vector search**: `repo_embeddings` table stores `F32_BLOB(768)` with `libsql_vector_idx` cosine index. 768-dim embeddings for semantic search. Seed with `db:seed-embeddings`. Dimension contract enforced — see *Embedding dimension contract* above.
 - **nuqs**: all filter/sort state in URL params — shareable links. Search, sort, language, list, tag params all via nuqs.
 - **SWR**: all client data through SWR hooks. No React Query.
 - **Tags stored as JSON arrays** in `user_repos.tags` text column.

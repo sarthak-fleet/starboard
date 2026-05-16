@@ -1,3 +1,15 @@
+/**
+ * Embedding dimension contract.
+ *
+ * The model below must produce EMBEDDING_DIM-sized vectors. Three places track this:
+ *   1. EMBEDDING_DIM here.
+ *   2. F32_BLOB(<dim>) in src/db/schema.sql (column + libsql_vector_idx).
+ *   3. The self-heal check in src/db/migrate.ts that drops + recreates repo_embeddings
+ *      when the live table's dimension drifts.
+ *
+ * Changing the model requires updating all three together. See agents.md ›
+ * "Embedding dimension contract".
+ */
 const EMBEDDING_MODEL = "@cf/baai/bge-base-en-v1.5";
 const EMBEDDING_DIM = 768;
 const BATCH_SIZE = 50;
@@ -137,7 +149,13 @@ export async function generateEmbeddings(
       ? await embedViaBinding(ai, batch)
       : await embedViaHttp(batch);
     for (let j = 0; j < embeddings.length; j++) {
-      results[i + j] = embeddings[j];
+      const vec = embeddings[j];
+      if (vec.length !== EMBEDDING_DIM) {
+        throw new Error(
+          `Embedding dimension mismatch: model "${EMBEDDING_MODEL}" returned ${vec.length}, expected ${EMBEDDING_DIM}. Update EMBEDDING_DIM, schema.sql, and the migrate.ts self-heal check together.`
+        );
+      }
+      results[i + j] = vec;
     }
   }
 

@@ -2,7 +2,6 @@ import "./globals.css";
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 
 import { Providers } from "@/components/providers";
 import { SaaSMakerFeedback } from "@/components/saasmaker-feedback";
@@ -30,16 +29,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Script
+      <head>
+        <script
           id="starboard-name-shim"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: "globalThis.__name=globalThis.__name||function(t){return t};",
           }}
         />
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <Providers>
           {children}
           <SaaSMakerFeedback />

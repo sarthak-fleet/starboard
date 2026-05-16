@@ -1,6 +1,33 @@
-import { createClient } from "@libsql/client";
+import { type Client, createClient } from "@libsql/client";
 import { readFileSync } from "fs";
 import { join } from "path";
+
+import { EMBEDDING_DIM } from "../lib/embeddings";
+
+/**
+ * Drop repo_embeddings + its vector index if the existing column type doesn't match
+ * EMBEDDING_DIM. libsql_vector_idx is dimension-pinned, so a mismatched table makes
+ * every insert fail with "vector dimensions different: N != M". Recreate happens
+ * via the IF NOT EXISTS DDL in schema.sql; the seed workflow re-embeds on the same
+ * run. No-op when the dimension is already correct.
+ */
+async function ensureEmbeddingDimension(db: Client): Promise<void> {
+  const info = await db.execute("PRAGMA table_info(repo_embeddings)");
+  if (info.rows.length === 0) return; // fresh DB — schema.sql creates it below
+
+  const embeddingCol = info.rows.find((row) => row.name === "embedding");
+  const type = (embeddingCol?.type as string | undefined) ?? "";
+  const match = type.match(/F32_BLOB\((\d+)\)/i);
+  const currentDim = match ? parseInt(match[1], 10) : null;
+
+  if (currentDim === EMBEDDING_DIM) return;
+
+  console.warn(
+    `[migrate] repo_embeddings dimension is ${currentDim ?? "unknown"} (type="${type}"), expected ${EMBEDDING_DIM}. Dropping table + vector index for recreate.`
+  );
+  await db.execute("DROP INDEX IF EXISTS idx_repo_embeddings_vec");
+  await db.execute("DROP TABLE IF EXISTS repo_embeddings");
+}
 
 async function migrate() {
   const db = createClient({
@@ -14,6 +41,8 @@ async function migrate() {
   await db.execute("DROP TABLE IF EXISTS stars_cache");
   await db.execute("DROP TABLE IF EXISTS collection_repos");
   await db.execute("DROP TABLE IF EXISTS collections");
+
+  await ensureEmbeddingDimension(db);
 
   // Add new columns to user_lists (idempotent)
   const alters = [

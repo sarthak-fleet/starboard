@@ -1,6 +1,31 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { describe, expect,it } from "vitest";
 
-import { buildRepoEmbeddingText, textHash } from "@/lib/embeddings";
+import { buildRepoEmbeddingText, EMBEDDING_DIM,textHash } from "@/lib/embeddings";
+
+describe("embedding dimension contract", () => {
+  it("schema.sql repo_embeddings column matches EMBEDDING_DIM", () => {
+    const schema = readFileSync(
+      join(process.cwd(), "src/db/schema.sql"),
+      "utf-8"
+    );
+    const match = schema.match(
+      /CREATE TABLE IF NOT EXISTS repo_embeddings[\s\S]*?embedding\s+F32_BLOB\((\d+)\)/
+    );
+    expect(match, "repo_embeddings F32_BLOB declaration not found").not.toBeNull();
+    expect(parseInt(match![1], 10)).toBe(EMBEDDING_DIM);
+  });
+
+  it("migrate.ts self-heal references EMBEDDING_DIM", () => {
+    const migrate = readFileSync(
+      join(process.cwd(), "src/db/migrate.ts"),
+      "utf-8"
+    );
+    expect(migrate).toContain("EMBEDDING_DIM");
+    expect(migrate).toContain("ensureEmbeddingDimension");
+  });
+});
 
 describe("buildRepoEmbeddingText", () => {
   it("includes all repo fields separated by pipes", () => {

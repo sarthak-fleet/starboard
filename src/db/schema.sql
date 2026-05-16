@@ -86,6 +86,9 @@ CREATE INDEX IF NOT EXISTS idx_likes_repo ON likes(repo_id);
 CREATE INDEX IF NOT EXISTS idx_user_lists_slug ON user_lists(slug);
 CREATE INDEX IF NOT EXISTS idx_comment_votes_comment ON comment_votes(comment_id);
 
+-- Dimension contract: F32_BLOB(768) must match EMBEDDING_DIM in src/lib/embeddings.ts.
+-- Changing the embedding model requires updating both, plus the self-heal check in
+-- src/db/migrate.ts so existing rows get recreated at the new dimension.
 CREATE TABLE IF NOT EXISTS repo_embeddings (
   repo_id    INTEGER PRIMARY KEY REFERENCES repos(id) ON DELETE CASCADE,
   embedding  F32_BLOB(768),
