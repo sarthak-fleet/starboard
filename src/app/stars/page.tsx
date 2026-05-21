@@ -118,7 +118,7 @@ function StarsContent() {
   }, [searchQuery]);
 
   // Data hooks
-  const { repos, total, facets, isLoading: reposLoading, isValidating, loadingMore, hasMore, loadMore, syncing, sync, syncResult, dismissSyncResult, mutate } = useStarredRepos({
+  const { repos, total, facets, isLoading: reposLoading, isValidating, loadingMore, hasMore, loadMore, syncing, sync, syncResult, syncError, dismissSyncResult, dismissSyncError, mutate } = useStarredRepos({
     q: debouncedSearch,
     language: selectedLanguages,
     listId: selectedListId,
@@ -237,6 +237,32 @@ function StarsContent() {
 
       {/* Progress bar for syncs when repos already loaded */}
       {syncing && total > 0 && <SyncProgressBar />}
+
+      {syncError && (
+        <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-3 md:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="text-sm">
+              <p className="font-medium text-red-500">Sync failed</p>
+              <p className="mt-1 text-muted-foreground">{syncError}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                onClick={sync}
+                disabled={syncing}
+                className="text-sm font-medium text-red-500 hover:underline disabled:opacity-50"
+              >
+                Retry
+              </button>
+              <button
+                onClick={dismissSyncError}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {syncResult && !syncResult.unchanged && (
         <div

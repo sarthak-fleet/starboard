@@ -60,3 +60,8 @@ cache.bin
 
 # CF Pages build output
 .cf-pages-bundle/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

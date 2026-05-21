@@ -17,9 +17,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://starboard.sarthakagrawal927.workers.dev";
+const SITE_DESCRIPTION =
+  "Sync, search, and organize your GitHub stars. Filter by language, find similar repos with semantic search, and group everything into collections.";
+
 export const metadata: Metadata = {
-  title: "Starboard",
-  description: "Your GitHub stars, organized.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Starboard — Your GitHub stars, organized",
+    template: "%s — Starboard",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "Starboard",
+  keywords: [
+    "GitHub stars",
+    "repository organizer",
+    "semantic search",
+    "open source discovery",
+  ],
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "Starboard",
+    title: "Starboard — Your GitHub stars, organized",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Starboard — Your GitHub stars, organized",
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

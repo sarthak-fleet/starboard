@@ -5,6 +5,16 @@
 
 Organize and filter your GitHub starred repos. Search, tag, categorize, and collect your stars in one place.
 
+## Deployment & External Services
+
+| Concern | Service |
+|---------|---------|
+| Hosting | Cloudflare Workers (`starboard`) via `@opennextjs/cloudflare` |
+| Database | Turso (libSQL); raw SQL, no ORM |
+| Auth | NextAuth v5 + GitHub OAuth |
+| AI | Cloudflare Workers AI binding for embeddings; free-ai gateway fallback for Node-based GitHub Actions |
+| CI/CD | GitHub Actions (`.github/workflows/deploy.yml`) — auto-deploy to Cloudflare on push to `main`; scheduled Actions seed/enrich/embed repos in Turso |
+
 ## Features
 
 - **GitHub OAuth** — Sign in and sync your starred repos

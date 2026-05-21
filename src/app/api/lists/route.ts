@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
+import { trackCoreAction } from "@/lib/analytics";
 import { auth } from "@/lib/auth";
 
 export async function GET() {
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
     sql: "INSERT INTO user_lists (user_id, name, color, icon, position) VALUES (?, ?, ?, ?, ?) RETURNING *",
     args: [session.user.githubId, listName, listColor, listIcon, nextPos],
   });
+
+  // Owner-facing analytics — creating a collection is a core action.
+  trackCoreAction("list_created", session.user.githubId);
 
   return NextResponse.json(result.rows[0], { status: 201 });
 }

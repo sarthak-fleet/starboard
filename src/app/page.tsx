@@ -38,6 +38,28 @@ export default function Home() {
           />
         </div>
 
+        {/* How it works */}
+        <div className="w-full max-w-2xl">
+          <h2 className="mb-6 text-center text-2xl font-bold">How it works</h2>
+          <ol className="grid gap-4 sm:grid-cols-3">
+            <HowItWorksStep
+              step={1}
+              title="Connect GitHub"
+              description="Sign in with GitHub — read-only access to your starred repositories."
+            />
+            <HowItWorksStep
+              step={2}
+              title="Sync your stars"
+              description="Starboard imports your stars and your GitHub star lists into one library."
+            />
+            <HowItWorksStep
+              step={3}
+              title="Search & organize"
+              description="Filter by language, run semantic search, and group repos into collections."
+            />
+          </ol>
+        </div>
+
         {/* Testimonials */}
         <div className="w-full max-w-3xl">
           <h2 className="mb-6 text-center text-2xl font-bold">What people are saying</h2>
@@ -66,5 +88,25 @@ function FeatureCard({
       <h3 className="mb-2 font-semibold">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
     </div>
+  );
+}
+
+function HowItWorksStep({
+  step,
+  title,
+  description,
+}: {
+  step: number;
+  title: string;
+  description: string;
+}) {
+  return (
+    <li className="rounded-xl border bg-card p-6 text-card-foreground">
+      <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+        {step}
+      </span>
+      <h3 className="mb-2 mt-3 font-semibold">{title}</h3>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </li>
   );
 }

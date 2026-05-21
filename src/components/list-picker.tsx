@@ -27,9 +27,9 @@ export function ListPicker({ repoId, currentListIds, lists, onAssign }: ListPick
           variant="ghost"
           size="icon"
           aria-label="Manage collections"
-          className="size-7 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+          className="size-11 text-muted-foreground transition-opacity md:size-7 md:opacity-0 md:group-hover:opacity-100"
         >
-          <List className={selectedIds.size > 0 ? "size-3.5 text-primary" : "size-3.5"} />
+          <List className={selectedIds.size > 0 ? "size-4 text-primary md:size-3.5" : "size-4 md:size-3.5"} />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-48 p-1" onClick={(e) => e.stopPropagation()}>
@@ -41,7 +41,7 @@ export function ListPicker({ repoId, currentListIds, lists, onAssign }: ListPick
           <button
             key={list.id}
             onClick={() => onAssign(repoId, list.id, !selectedIds.has(list.id))}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+            className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent md:min-h-0"
           >
             <span
               className="inline-block size-2.5 shrink-0 rounded-full"

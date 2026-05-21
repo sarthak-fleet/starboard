@@ -2,6 +2,7 @@ import type { InStatement } from "@libsql/client";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
+import { trackActivated, trackCoreAction } from "@/lib/analytics";
 import { auth } from "@/lib/auth";
 import { buildRepoEmbeddingText, generateEmbeddings, textHash } from "@/lib/embeddings";
 import { fetchAllStarredRepos } from "@/lib/github";
@@ -123,6 +124,14 @@ export async function POST() {
     }
 
     await db.batch(statements);
+
+    // Owner-facing analytics — a completed sync is the core action.
+    // If the user had no starred repos before this sync, this is their
+    // first real value: fire `activated` once.
+    trackCoreAction("repos_synced", userId);
+    if (existingIds.size === 0 && freshRepos.length > 0) {
+      trackActivated(userId);
+    }
 
     const githubSync = username
       ? await syncGitHubLists(userId, username, buildRepoIdByFullName(freshRepos))

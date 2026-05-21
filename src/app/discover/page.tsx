@@ -113,7 +113,7 @@ function DiscoverContent() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const { repos, total, facets, isLoading: reposLoading, isValidating, loadingMore, hasMore, loadMore, mutate } = useDiscoverRepos({
+  const { repos, total, facets, error: discoverError, isLoading: reposLoading, isValidating, loadingMore, hasMore, loadMore, mutate } = useDiscoverRepos({
     q: debouncedSearch,
     language: selectedLanguages,
     listId: selectedListId,
@@ -246,6 +246,20 @@ function DiscoverContent() {
 
         <ScrollArea className="flex-1">
           <main className="p-4 md:p-6">
+            {discoverError && !reposLoading && (
+              <div className="mb-4 flex items-center justify-between gap-4 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  Couldn&apos;t load discover results — search may be
+                  temporarily unavailable.
+                </span>
+                <button
+                  onClick={() => mutate()}
+                  className="shrink-0 font-medium text-red-500 hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             <RepoGrid
               repos={repos}
               viewMode={viewMode}

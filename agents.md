@@ -15,7 +15,7 @@ GitHub stars organizer — sync, tag, and semantic vector search across your sta
 - Auth: NextAuth v5 beta (GitHub OAuth only — `read:user` scope)
 - State: nuqs (URL state for filters), SWR (client data fetching)
 - Testing: Vitest (unit in `src/__tests__/`)
-- Deploy: Vercel
+- Deploy: Cloudflare Workers (`starboard`) via @opennextjs/cloudflare
 - Package manager: pnpm
 
 ## Repo structure

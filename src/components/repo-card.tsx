@@ -103,11 +103,11 @@ export const RepoCard = memo(function RepoCard({
     <button
       type="button"
       onClick={() => onToggleSave(repo.id, !isSaved)}
-      className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent-foreground/10 hover:text-foreground"
+      className="flex min-h-11 min-w-11 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent-foreground/10 hover:text-foreground md:min-h-0 md:min-w-0 md:p-1"
       title={isSaved ? "Remove from library" : "Save to library"}
       aria-label={isSaved ? "Remove from library" : "Save to library"}
     >
-      <Bookmark className={`size-3.5${isSaved ? " fill-current text-primary" : ""}`} />
+      <Bookmark className={`size-4${isSaved ? " fill-current text-primary" : ""} md:size-3.5`} />
     </button>
   ) : null;
 

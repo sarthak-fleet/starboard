@@ -19,6 +19,45 @@ export interface FetchResult {
   notModified: boolean;
 }
 
+const MAX_GITHUB_ATTEMPTS = 3;
+
+/** 429 (rate limit / abuse) + 5xx are transient and worth retrying. */
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * fetch() with exponential backoff. Retries on network errors and retryable
+ * HTTP statuses (429 / 5xx); returns the response otherwise so the caller can
+ * inspect 304 / non-retryable errors.
+ */
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+  attempts = MAX_GITHUB_ATTEMPTS,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) {
+      // 500ms, 1000ms, 2000ms ... with light jitter.
+      await delay(500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250));
+    }
+    try {
+      const res = await fetch(input, init);
+      if (res.ok || !isRetryableStatus(res.status) || attempt === attempts - 1) {
+        return res;
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error("GitHub request failed after retries");
+}
+
 /**
  * Fetch all starred repos from GitHub API, with optional ETag for conditional requests.
  * If etag is provided and data hasn't changed, returns { notModified: true }.
@@ -44,7 +83,7 @@ export async function fetchAllStarredRepos(
       headers["If-None-Match"] = cachedEtag;
     }
 
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://api.github.com/user/starred?per_page=${perPage}&page=${page}&sort=created&direction=desc`,
       { headers }
     );
