@@ -1,7 +1,7 @@
 /**
- * Owner-facing analytics — the fixed 4-event taxonomy.
+ * Owner-facing analytics — the shared fleet funnel plus narrow product events.
  *
- * Every project in the fleet emits exactly these four events — `signup`,
+ * Every project in the fleet emits these four funnel events — `signup`,
  * `activated`, `core_action`, `returned` — so a single PostHog project can
  * build one cross-fleet funnel (signup -> activated -> core_action) and a
  * D1/D7 retention insight, with no custom dashboard.
@@ -43,6 +43,7 @@ const POSTHOG_HOST =
  * them into collections.
  */
 export type CoreAction = "repos_synced" | "list_created";
+export type DigestItemAction = "reviewed" | "dismissed";
 
 interface AnalyticsEventMap {
   /** First session after an account is created. */
@@ -53,6 +54,16 @@ interface AnalyticsEventMap {
   core_action: { project: typeof PROJECT; action: CoreAction };
   /** A return session by a user with prior activity. */
   returned: { project: typeof PROJECT };
+  /** The maintainer digest was rendered for the user. */
+  digest_opened: { project: typeof PROJECT; digest_id: string; item_count: number };
+  /** A digest item was reviewed or dismissed. */
+  digest_item_actioned: {
+    project: typeof PROJECT;
+    digest_id: string;
+    item_id: string;
+    group: string;
+    action: DigestItemAction;
+  };
 }
 
 function emit<K extends keyof AnalyticsEventMap>(
@@ -113,4 +124,24 @@ export function trackCoreAction(action: CoreAction, distinctId?: string): void {
 /** Fire on session start for a user who has prior activity. */
 export function trackReturned(): void {
   emit("returned", {});
+}
+
+/** Fire when the weekly maintainer digest is opened. */
+export function trackDigestOpened(digestId: string, itemCount: number): void {
+  emit("digest_opened", { digest_id: digestId, item_count: itemCount });
+}
+
+/** Fire when a digest item is marked reviewed or dismissed. */
+export function trackDigestItemActioned(
+  digestId: string,
+  itemId: string,
+  group: string,
+  action: DigestItemAction
+): void {
+  emit("digest_item_actioned", {
+    digest_id: digestId,
+    item_id: itemId,
+    group,
+    action,
+  });
 }
