@@ -1,8 +1,22 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { describe, expect,it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildRepoEmbeddingText, EMBEDDING_DIM,textHash } from "@/lib/embeddings";
+import {
+  buildRepoEmbeddingText,
+  EMBEDDING_DIM,
+  generateEmbeddings,
+  textHash,
+} from "@/lib/embeddings";
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  globalThis.fetch = originalFetch;
+  delete process.env.AI_GATEWAY_URL;
+  delete process.env.AI_GATEWAY_API_KEY;
+});
 
 describe("embedding dimension contract", () => {
   it("schema.sql repo_embeddings column matches EMBEDDING_DIM", () => {
@@ -24,6 +38,26 @@ describe("embedding dimension contract", () => {
     );
     expect(migrate).toContain("EMBEDDING_DIM");
     expect(migrate).toContain("ensureEmbeddingDimension");
+  });
+
+  it("requests the configured embedding dimension from the HTTP gateway", async () => {
+    process.env.AI_GATEWAY_URL = "https://ai-gateway.example.test";
+    process.env.AI_GATEWAY_API_KEY = "test-key";
+    const embedding = Array.from({ length: EMBEDDING_DIM }, () => 0.1);
+    const fetchMock = vi.fn(
+      async (_input: string | URL | Request, _init?: RequestInit) =>
+        Response.json({ data: [{ embedding, index: 0 }] })
+    );
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await generateEmbeddings(["repo text"]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0]![1]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      input: ["repo text"],
+      dimensions: EMBEDDING_DIM,
+    });
   });
 });
 

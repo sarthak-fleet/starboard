@@ -89,7 +89,11 @@ async function embedViaHttp(texts: string[]): Promise<number[][]> {
           Authorization: `Bearer ${key}`,
           "x-gateway-project-id": "starboard",
         },
-        body: JSON.stringify({ model: EMBEDDING_MODEL, input: texts }),
+        body: JSON.stringify({
+          model: EMBEDDING_MODEL,
+          input: texts,
+          dimensions: EMBEDDING_DIM,
+        }),
       });
       if (!res.ok) {
         if (isRetryableStatus(res.status) && attempt < MAX_EMBED_ATTEMPTS - 1) {

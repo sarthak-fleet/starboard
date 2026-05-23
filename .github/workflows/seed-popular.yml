@@ -43,9 +43,10 @@ jobs:
       - name: Run seed script
         run: pnpm db:seed-popular
         env:
-          # PAT with public_repo:read. Falls back to the runner's GITHUB_TOKEN
-          # which has 1000/hr search quota — enough for a single daily run.
-          GITHUB_TOKEN: ${{ secrets.GH_SEED_TOKEN || github.token }}
+          # The runner token has enough GitHub Search quota for the daily walk.
+          # Keep this independent of long-lived PAT rotation so a stale secret
+          # cannot break scheduled seeding with 401 Bad credentials.
+          GITHUB_TOKEN: ${{ github.token }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           AI_GATEWAY_URL: ${{ secrets.AI_GATEWAY_URL }}
