@@ -59,6 +59,22 @@ describe("embedding dimension contract", () => {
       dimensions: EMBEDDING_DIM,
     });
   });
+
+  it("normalizes oversized HTTP gateway embeddings to the schema dimension", async () => {
+    process.env.AI_GATEWAY_URL = "https://ai-gateway.example.test";
+    process.env.AI_GATEWAY_API_KEY = "test-key";
+    const embedding = Array.from({ length: EMBEDDING_DIM * 4 }, (_, index) => index);
+    globalThis.fetch = vi.fn(
+      async (_input: string | URL | Request, _init?: RequestInit) =>
+        Response.json({ data: [{ embedding, index: 0 }] })
+    ) as typeof fetch;
+
+    const [normalized] = await generateEmbeddings(["repo text"]);
+
+    expect(normalized).toHaveLength(EMBEDDING_DIM);
+    expect(normalized[0]).toBe(1.5);
+    expect(normalized[1]).toBe(5.5);
+  });
 });
 
 describe("buildRepoEmbeddingText", () => {

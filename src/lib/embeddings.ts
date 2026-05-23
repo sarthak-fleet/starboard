@@ -163,6 +163,21 @@ export function textHash(text: string): string {
   return h.toString(36);
 }
 
+function normalizeEmbeddingDimensions(vec: number[]): number[] {
+  if (vec.length === EMBEDDING_DIM) return vec;
+  if (vec.length > EMBEDDING_DIM && vec.length % EMBEDDING_DIM === 0) {
+    const factor = vec.length / EMBEDDING_DIM;
+    const reduced = new Array<number>(EMBEDDING_DIM);
+    for (let i = 0; i < EMBEDDING_DIM; i++) {
+      let sum = 0;
+      for (let j = 0; j < factor; j++) sum += vec[i * factor + j] ?? 0;
+      reduced[i] = sum / factor;
+    }
+    return reduced;
+  }
+  return vec;
+}
+
 /**
  * Generate embeddings for one or more texts.
  * Prefers the direct CF Workers AI binding (when running inside a Worker via
@@ -182,7 +197,7 @@ export async function generateEmbeddings(
       ? await embedViaBinding(ai, batch)
       : await embedViaHttp(batch);
     for (let j = 0; j < embeddings.length; j++) {
-      const vec = embeddings[j];
+      const vec = normalizeEmbeddingDimensions(embeddings[j]);
       if (vec.length !== EMBEDDING_DIM) {
         throw new Error(
           `Embedding dimension mismatch: model "${EMBEDDING_MODEL}" returned ${vec.length}, expected ${EMBEDDING_DIM}. Update EMBEDDING_DIM, schema.sql, and the migrate.ts self-heal check together.`
