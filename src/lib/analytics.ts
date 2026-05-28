@@ -6,26 +6,9 @@
  * build one cross-fleet funnel (signup -> activated -> core_action) and a
  * D1/D7 retention insight, with no custom dashboard.
  *
- * Every event carries `project: "starboard"`. This wrapper is intentionally
- * thin so it can later be folded into `@saas-maker/posthog-client`.
- *
- * It is isomorphic: in the browser it routes through `@saas-maker/posthog-client`
- * (`track`); inside a server action / route handler it routes through
- * `@saas-maker/posthog-client/server` so the server-triggered events
- * (`activated`, `core_action`) still land.
- *
- * NOTE: both posthog entries are loaded lazily via dynamic `import()` inside the
- * branch that actually uses them. This module is imported from BOTH a client
- * component (`session-tracker.tsx`) and server route handlers, so neither entry
- * can be a static top-level import:
- *  - `@saas-maker/posthog-client` (browser) bundles `PostHogProvider`, which
- *    calls `React.createContext` at module-evaluation time — a static import
- *    would crash SSR / `next build` with "createContext is not a function".
- *  - `@saas-maker/posthog-client/server` pulls in `posthog-node`, which uses
- *    `node:fs` — a static import would drag Node built-ins into the browser
- *    client bundle and break the build.
- * Loading each lazily inside its own `typeof window` branch keeps each entry
- * out of the context where it cannot run.
+ * Every event carries `project_id: "starboard"`. Browser events use
+ * `posthog-js`; server-triggered events post directly to the PostHog capture
+ * API so this module stays safe in both bundles.
  */
 
 const PROJECT = "starboard" as const;
@@ -47,18 +30,18 @@ export type DigestItemAction = "reviewed" | "dismissed";
 
 interface AnalyticsEventMap {
   /** First session after an account is created. */
-  signup: { project: typeof PROJECT };
+  signup: { project_id: typeof PROJECT };
   /** The user reaches first real value — their first successful star sync. */
-  activated: { project: typeof PROJECT };
+  activated: { project_id: typeof PROJECT };
   /** The thing the product exists to do. */
-  core_action: { project: typeof PROJECT; action: CoreAction };
+  core_action: { project_id: typeof PROJECT; action: CoreAction };
   /** A return session by a user with prior activity. */
-  returned: { project: typeof PROJECT };
+  returned: { project_id: typeof PROJECT };
   /** The maintainer digest was rendered for the user. */
-  digest_opened: { project: typeof PROJECT; digest_id: string; item_count: number };
+  digest_opened: { project_id: typeof PROJECT; digest_id: string; item_count: number };
   /** A digest item was reviewed or dismissed. */
   digest_item_actioned: {
-    project: typeof PROJECT;
+    project_id: typeof PROJECT;
     digest_id: string;
     item_id: string;
     group: string;
@@ -66,36 +49,36 @@ interface AnalyticsEventMap {
   };
 }
 
-function emit<K extends keyof AnalyticsEventMap>(
-  event: K,
-  props: Omit<AnalyticsEventMap[K], "project">,
+function emitServer(event: string, props: Record<string, unknown>, distinctId?: string): void {
+  void fetch(`${POSTHOG_HOST}/i/v0/e/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: POSTHOG_KEY,
+      event,
+      distinct_id: distinctId ?? `${PROJECT}-server`,
+      properties: props,
+    }),
+  }).catch(() => {
+    // Analytics must never block or break a server action.
+  });
+}
+
+export function trackEvent(
+  event: string,
+  properties: Record<string, unknown> = {},
   distinctId?: string,
 ): void {
-  const payload = { project: PROJECT, ...props };
+  const payload = { project_id: PROJECT, ...properties };
   try {
     if (typeof window === "undefined") {
-      // Server context (route handler / server action). Load the React-free
-      // `/server` entry lazily so `posthog-node` (`node:fs`) is never bundled
-      // into the browser client chunk.
-      void import("@saas-maker/posthog-client/server")
-        .then(({ createPostHogServer, getServerClient, trackServer }) => {
-          if (!getServerClient()) {
-            createPostHogServer({ apiKey: POSTHOG_KEY, host: POSTHOG_HOST });
-          }
-          trackServer(event, {
-            distinctId: distinctId ?? `${PROJECT}-server`,
-            properties: payload,
-          });
-        })
-        .catch(() => {
-          // Analytics must never break a user flow. Swallow and move on.
-        });
+      emitServer(event, payload, distinctId);
     } else {
       // Browser context. Load the browser client lazily so the React-dependent
-      // `@saas-maker/posthog-client` entry is never evaluated during SSR.
-      void import("@saas-maker/posthog-client")
-        .then(({ track }) => {
-          track(event, payload);
+      // `posthog-js` entry is never evaluated during SSR.
+      void import("posthog-js")
+        .then(({ default: posthog }) => {
+          posthog.capture(event, payload);
         })
         .catch(() => {
           // Analytics must never break a user flow. Swallow and move on.
@@ -104,6 +87,14 @@ function emit<K extends keyof AnalyticsEventMap>(
   } catch {
     // Analytics must never break a user flow. Swallow and move on.
   }
+}
+
+function emit<K extends keyof AnalyticsEventMap>(
+  event: K,
+  props: Omit<AnalyticsEventMap[K], "project_id">,
+  distinctId?: string,
+): void {
+  trackEvent(event, props, distinctId);
 }
 
 /** Fire once, on the first session after an account is created. */

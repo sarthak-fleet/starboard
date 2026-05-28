@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed-embeddings": "tsx src/db/seed-embeddings.ts",
     "db:embed-pending": "tsx src/db/seed-embeddings.ts",
@@ -29,7 +30,6 @@
     "@libsql/client": "0.17.3",
     "@saas-maker/changelog-widget": "^0.2.1",
     "@saas-maker/feedback": "^0.2.1",
-    "@saas-maker/posthog-client": "^0.1.0",
     "@saas-maker/sdk": "^0.3.1",
     "@saas-maker/testimonials": "^0.2.1",
     "@tanstack/react-virtual": "3.13.24",
@@ -45,7 +45,8 @@
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "swr": "2.4.1",
-    "tailwind-merge": "3.5.0"
+    "tailwind-merge": "3.5.0",
+    "posthog-js": "^1.372.1"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.19.4",
