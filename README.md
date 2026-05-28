@@ -160,4 +160,5 @@ This section is maintained by the SaaS Maker Active-AI product/design loop so fu
 | `5a0a8e62` starboard: add stale-star cleanup proof | done | medium | 2026-05-26 |
 | `b3d3b34c` starboard: add GitHub permission trust note | done | medium | 2026-05-26 |
 | `14253981` starboard: add paid weekly intelligence digest preview | done | high | 2026-05-26 |
+| `ec12eae5` starboard: add paid weekly action preview | done | medium | 2026-05-27 |
 <!-- ACTIVE-AI-TASK-LOG:END -->

@@ -9,8 +9,7 @@ No `.env`, `.pem`, `.key`, or service-account files found in git history. Clean.
 File is gitignored and was never committed -- no leak, but credentials should be rotated before any resumed work.
 
 ## Deployment
-Vercel project detected (`.vercel/` directory present). No other deployment configs (wrangler, netlify, firebase).
-Verify Vercel project is paused/deleted if not in use -- stale deployments can be targeted.
+Deployed on Cloudflare Workers via `@opennextjs/cloudflare` and Wrangler. Historical Vercel references are stale and should not guide current deploy work.
 
 ## Code Security
 - **CORS**: `cors` package is a dependency but no explicit wide-open CORS config (`Access-Control-Allow-Origin: *`) found in source.
@@ -19,5 +18,5 @@ Verify Vercel project is paused/deleted if not in use -- stale deployments can b
 
 ## Action Items
 - [ ] Rotate AUTH_SECRET, AUTH_GITHUB_SECRET, and TURSO_AUTH_TOKEN before resuming development
-- [ ] Confirm Vercel deployment is paused or torn down
+- [ ] Confirm any old non-Cloudflare deployment targets are paused or torn down
 - [ ] Add `.env.example` documenting required vars without values (currently missing)

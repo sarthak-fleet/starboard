@@ -7,6 +7,7 @@ import { SampleStaleCleanup } from "@/components/sample-stale-cleanup";
 import { SampleStarsBoard } from "@/components/sample-stars-board";
 import { SampleWeeklyDigest } from "@/components/sample-weekly-digest";
 import { SignInButton } from "@/components/sign-in-button";
+import { WeeklyActionPreview } from "@/components/weekly-action-preview";
 
 export const dynamic = "force-static";
 
@@ -119,6 +120,15 @@ export default function Home() {
             just came back to life.
           </p>
           <SampleWeeklyDigest />
+        </div>
+
+        {/* Weekly action preview */}
+        <div className="w-full max-w-4xl">
+          <h2 className="mb-2 text-center text-2xl font-bold">Get actionable insights</h2>
+          <p className="mb-6 text-center text-sm text-muted-foreground">
+            Upgrade to our Pro plan and receive a weekly action digest with key updates and trends from repositories you care about.
+          </p>
+          <WeeklyActionPreview />
         </div>
 
         {/* Testimonials */}
