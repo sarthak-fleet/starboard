@@ -24,7 +24,15 @@ jobs:
       - uses: actions/setup-node@v6
         with: { node-version: '22', cache: pnpm }
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      # populateCache local boots an in-memory wrangler platform proxy to
+      # resolve bindings; AI + the unsafe rate-limiter binding need the
+      # same CF token the wrangler-action below uses, otherwise the step
+      # errors with "You must be logged in to use wrangler dev in remote
+      # mode."
       - run: pnpm cf:build
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
