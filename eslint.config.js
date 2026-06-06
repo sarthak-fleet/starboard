@@ -1,12 +1,13 @@
 import config from "@saas-maker/eslint-config/next";
 
-export default [
+const eslintConfig = [
   {
     ignores: [
       ".cf-pages-bundle",
       ".open-next",
       ".wrangler",
       ".next",
+      "landing-astro/.astro",
       "out",
       "dist",
       "build",
@@ -15,3 +16,5 @@ export default [
   },
   ...config,
 ];
+
+export default eslintConfig;

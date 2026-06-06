@@ -5,7 +5,7 @@
 
 Organize, search, and rediscover GitHub starred repositories. Starboard turns a
 large star list into a searchable personal knowledge base with tags, lists,
-semantic search, and public share pages.
+semantic search, fleet project recommendations, and public share pages.
 
 Live app: <https://starboard.sarthakagrawal927.workers.dev>
 
@@ -13,8 +13,9 @@ Live app: <https://starboard.sarthakagrawal927.workers.dev>
 
 GitHub stars are useful intent signals, but the native GitHub UI is weak for
 retrieval. Starboard syncs stars, enriches repository metadata, lets the user
-organize repos with tags and collections, and uses embeddings to make semantic
-discovery possible across both personal stars and seeded popular repositories.
+organize repos with tags and collections, maps saved repositories to active
+fleet projects, and uses embeddings to make semantic discovery possible across
+both personal stars and seeded popular repositories.
 
 ## Deployment & External Services
 
@@ -35,6 +36,7 @@ discovery possible across both personal stars and seeded popular repositories.
 - **Search** — Full-text search across name, description, and topics
 - **Filter** — By language, category, tag, or collection
 - **Sort** — Recently starred, most stars, recently updated, A-Z
+- **My Projects** — Fleet-aware recommendations for current SaaS Maker projects
 - **Grid / List Views** — Toggle between card grid and compact list
 - **Dark Mode** — Dark by default
 - **Virtual Scroll** — Smooth performance with 1000+ repos
@@ -77,6 +79,7 @@ AUTH_TRUST_HOST=true
 ```text
 src/app/stars/          main dashboard
 src/app/explore/        repo detail and discovery pages
+src/app/projects/       current fleet projects and repository recommendations
 src/app/lists/          public shared list pages
 src/app/api/            auth, stars, lists, repo interactions
 src/components/         repo cards, grid, filters, pickers, shell
@@ -85,6 +88,7 @@ src/db/schema.sql       raw SQL schema
 src/db/migrate.ts       migration runner and embedding dimension guard
 src/db/seed-embeddings.ts
 scripts/seed-popular.ts scheduled popular repo seeding
+scripts/extract-fleet-projects.ts local fleet snapshot generator
 ```
 
 ## Scripts
@@ -97,6 +101,7 @@ pnpm test:e2e            # Playwright e2e
 pnpm db:migrate          # apply raw SQL schema to Turso
 pnpm db:seed-embeddings  # backfill repo embeddings
 pnpm db:seed-popular     # seed/enrich popular repositories
+pnpm fleet:extract-projects # refresh checked-in fleet project context snapshot
 pnpm build:cf            # OpenNext Cloudflare build
 pnpm preview:cf          # local Cloudflare preview
 pnpm deploy:cf           # deploy to Cloudflare Workers
@@ -120,6 +125,8 @@ drift and recreates embedding storage when needed.
 - Use raw SQL through `@libsql/client`; there is no ORM in this repo.
 - GitHub star sync uses ETag caching to avoid unnecessary API calls.
 - GitHub star lists are scraped from GitHub HTML because there is no official API for that surface.
+- My Projects reads the checked-in `data/fleet-projects.generated.json` snapshot. Refresh it locally with `pnpm fleet:extract-projects` after fleet project scope, dependencies, README, or `PROJECT_STATUS.md` changes.
+- Project recommendations suppress packages already used by the target project before ranking candidate repos.
 - Filter and sort state lives in the URL through `nuqs`, so dashboard links are shareable.
 - Scheduled GitHub Actions seed and enrich popular repositories for discovery.
 - SaaS Maker feedback, analytics, testimonials, and changelog widgets are integrated.

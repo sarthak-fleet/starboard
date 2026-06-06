@@ -5,6 +5,7 @@ import {
   Boxes,
   Check,
   Database,
+  FolderKanban,
   LayoutGrid,
   List,
   Loader2,
@@ -75,6 +76,7 @@ export function TopBar({
   const { data: session } = useSession();
   const pathname = usePathname();
   const isDiscover = pathname?.startsWith("/discover");
+  const isProjects = pathname?.startsWith("/projects");
   const isRadar = pathname?.startsWith("/radar");
   const isStackBuilder = pathname?.startsWith("/stack-builder");
   const userAvatar = session?.user?.image
@@ -124,6 +126,17 @@ export function TopBar({
         </Button>
         <Button
           asChild
+          variant={isProjects ? "secondary" : "ghost"}
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-xs"
+        >
+          <Link href="/projects">
+            <FolderKanban className="size-3.5" />
+            My Projects
+          </Link>
+        </Button>
+        <Button
+          asChild
           variant={isRadar ? "secondary" : "ghost"}
           size="sm"
           className="h-7 gap-1.5 px-2 text-xs"
@@ -146,7 +159,7 @@ export function TopBar({
         </Button>
         <Button
           asChild
-          variant={!isDiscover && !isRadar && !isStackBuilder ? "secondary" : "ghost"}
+          variant={!isDiscover && !isProjects && !isRadar && !isStackBuilder ? "secondary" : "ghost"}
           size="sm"
           className="h-7 gap-1.5 px-2 text-xs"
         >

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, GitCompare, Search, Tag } from "lucide-react";
+import { Bookmark, GitCompare, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -135,8 +135,13 @@ function StarsContent() {
     selectedListId ?? "",
     sortBy,
   ].join("|");
-  const selectedRepoIds =
-    selectedByFilter.filterKey === filterKey ? selectedByFilter.ids : new Set<number>();
+  const selectedRepoIds = useMemo(
+    () =>
+      selectedByFilter.filterKey === filterKey
+        ? selectedByFilter.ids
+        : new Set<number>(),
+    [filterKey, selectedByFilter]
+  );
   const compareOpen = compareRequested && selectedRepoIds.size >= 2;
 
   // Data hooks

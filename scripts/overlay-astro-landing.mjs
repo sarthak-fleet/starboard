@@ -28,7 +28,7 @@
 // This runs as the LAST step of `cf:build`, after OpenNext has finished
 // writing its bundle. Safe to re-run; idempotent.
 
-import { readdir, readFile, writeFile, copyFile, stat, mkdir } from "node:fs/promises";
+import { readdir, readFile, writeFile, copyFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 

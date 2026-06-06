@@ -36,7 +36,7 @@ function hasAuthCookie(request) {
   return AUTH_COOKIE_FRAGMENTS.some((c) => cookie.includes(c));
 }
 
-export default {
+const worker = {
   async fetch(request, env, ctx) {
     if (request.method !== "GET") {
       return openNext.fetch(request, env, ctx);
@@ -140,3 +140,5 @@ export default {
     return clientResponse;
   },
 };
+
+export default worker;
