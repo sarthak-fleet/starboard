@@ -7,7 +7,10 @@
  * Optional env:
  *   DIGEST_DAYS       — lookback window, default 7
  *   STAR_THRESHOLDS   — comma-separated thresholds, default 5000,10000,20000,50000,100000
+ *   DIGEST_MAX_CHARS  — max issue body characters, default 62000
  */
+
+import { fileURLToPath } from "node:url";
 
 import { createClient } from "@libsql/client";
 
@@ -20,6 +23,10 @@ const STAR_THRESHOLDS = (process.env.STAR_THRESHOLDS || "5000,10000,20000,50000,
 const FASTEST_GROWERS_LIMIT = 20;
 const MAX_REPOS_PER_THRESHOLD = 25;
 const THRESHOLD_BAND_LIMIT = 10;
+const GITHUB_ISSUE_BODY_TARGET_CHARS = parseInt(
+  process.env.DIGEST_MAX_CHARS || "62000",
+  10
+);
 
 interface ThresholdEvent {
   threshold: number;
@@ -93,6 +100,33 @@ function groupByThreshold(events: ThresholdEvent[]) {
     groups.set(event.threshold, group);
   }
   return groups;
+}
+
+export function capDigestForGithubIssue(
+  body: string,
+  maxChars = GITHUB_ISSUE_BODY_TARGET_CHARS
+): string {
+  if (body.length <= maxChars) return body;
+
+  const omittedLines = body
+    .slice(maxChars)
+    .split("\n")
+    .filter((line) => line.trim().length > 0).length;
+  const note =
+    `\n\n## Truncated\n\n` +
+    `Digest exceeded the GitHub issue body limit, so ${omittedLines} non-empty ` +
+    `line${omittedLines === 1 ? "" : "s"} were omitted. Lower DIGEST_DAYS or ` +
+    `STAR_THRESHOLDS for a narrower manual rerun.\n`;
+  const budget = maxChars - note.length;
+  if (budget <= 0) return note.slice(0, maxChars);
+
+  const prefixCandidate = body.slice(0, budget);
+  const lineBreak = prefixCandidate.lastIndexOf("\n");
+  const prefix = prefixCandidate
+    .slice(0, lineBreak > 0 ? lineBreak : budget)
+    .trimEnd();
+
+  return `${prefix}${note}`;
 }
 
 async function loadThresholdBands(
@@ -329,10 +363,12 @@ async function main() {
   lines.push("- The 5,000-star section includes repos newly discovered above the seed floor.");
   lines.push("- Higher thresholds are recorded when a repo moves from below the threshold to above it between seed refreshes.");
 
-  process.stdout.write(`${lines.join("\n")}\n`);
+  process.stdout.write(`${capDigestForGithubIssue(lines.join("\n"))}\n`);
 }
 
-main().catch((err) => {
-  console.error("Digest generation failed:", err);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error("Digest generation failed:", err);
+    process.exit(1);
+  });
+}
