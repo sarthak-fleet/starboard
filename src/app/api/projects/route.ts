@@ -18,6 +18,7 @@ export async function GET() {
       tier: project.tier,
       category: project.category,
       priority: project.priority,
+      maturity: project.maturity,
       featureAreas: project.featureAreas,
       stack: {
         languages: project.stack.languages,

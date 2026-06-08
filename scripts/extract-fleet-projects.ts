@@ -1,7 +1,12 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { type FleetProjectSnapshot,inferFeatureAreas, topTokens } from "../src/lib/fleet-projects";
+import {
+  type FleetProjectMaturity,
+  type FleetProjectSnapshot,
+  inferFeatureAreas,
+  topTokens,
+} from "../src/lib/fleet-projects";
 
 const fleetRoot = path.resolve(process.cwd(), "..");
 const registryPath = path.join(fleetRoot, "saas-maker", "foundry.projects.json");
@@ -26,6 +31,7 @@ interface RegistryEntry {
   tier?: string;
   category?: string;
   priority?: string;
+  maturity?: string;
 }
 
 interface PackageJson {
@@ -154,6 +160,19 @@ function detectConfigFiles(projectRoot: string): string[] {
   ].filter((file) => existsSync(path.join(projectRoot, file)));
 }
 
+function normalizeMaturity(value: string | undefined): FleetProjectMaturity {
+  if (value === "public" || value === "public-ready" || value === "internal-first") {
+    return value;
+  }
+  return "internal-first";
+}
+
+function maturityRank(maturity: FleetProjectMaturity): number {
+  if (maturity === "public") return 0;
+  if (maturity === "public-ready") return 1;
+  return 2;
+}
+
 function buildSnapshot(slug: string, entry: RegistryEntry): FleetProjectSnapshot | null {
   if (outOfFleet.has(slug)) return null;
   const projectRoot = path.join(fleetRoot, slug);
@@ -161,6 +180,9 @@ function buildSnapshot(slug: string, entry: RegistryEntry): FleetProjectSnapshot
 
   const projectStatus = readText(path.join(projectRoot, "PROJECT_STATUS.md"));
   const readme = readText(path.join(projectRoot, "README.md"));
+  const recommendationContext = stripMarkdown(
+    readText(path.join(projectRoot, "docs", "PROJECT_RECOMMENDATION_CONTEXT.md"), 12000)
+  ).slice(0, 5000);
   const packageFiles = findPackageJsons(projectRoot);
   const packages = packageFiles.map(readPackageJson).filter((pkg): pkg is PackageJson => pkg !== null);
   const dependencies = [...new Set(packages.flatMap((pkg) => Object.keys(pkg.dependencies ?? {})))].sort();
@@ -179,6 +201,7 @@ function buildSnapshot(slug: string, entry: RegistryEntry): FleetProjectSnapshot
     statusSummary,
     plannedNext.join(" "),
     readmeSummary,
+    recommendationContext,
     dependencies.join(" "),
     devDependencies.join(" "),
   ].join("\n");
@@ -187,6 +210,7 @@ function buildSnapshot(slug: string, entry: RegistryEntry): FleetProjectSnapshot
     statusSummary,
     plannedNext,
     readmeSummary,
+    recommendationContext,
     dependencies: [...dependencies, ...devDependencies],
   });
 
@@ -198,11 +222,13 @@ function buildSnapshot(slug: string, entry: RegistryEntry): FleetProjectSnapshot
     tier: entry.tier ?? "unknown",
     category: entry.category ?? "unknown",
     priority: entry.priority ?? "unknown",
+    maturity: normalizeMaturity(entry.maturity),
     sourcePath: path.relative(fleetRoot, projectRoot),
     statusSummary,
     plannedNext,
     deferred,
     readmeSummary,
+    recommendationContext,
     featureAreas,
     stack: {
       dependencies,
@@ -226,8 +252,8 @@ function main() {
     .map(([slug, entry]) => buildSnapshot(slug, entry))
     .filter((project): project is FleetProjectSnapshot => project !== null)
     .sort((a, b) => {
-      const priority = a.priority.localeCompare(b.priority);
-      if (priority !== 0) return priority;
+      const maturity = maturityRank(a.maturity) - maturityRank(b.maturity);
+      if (maturity !== 0) return maturity;
       return a.slug.localeCompare(b.slug);
     });
 

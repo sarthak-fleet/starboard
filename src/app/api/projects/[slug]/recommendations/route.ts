@@ -111,6 +111,7 @@ async function fetchSemanticDistances(
           project.name,
           project.description,
           project.statusSummary,
+          project.recommendationContext,
           `Feature: ${featureArea.label}`,
           featureArea.description,
           featureArea.keywords.join(", "),

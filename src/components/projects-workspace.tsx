@@ -38,6 +38,7 @@ interface ProjectSummary {
   tier: string;
   category: string;
   priority: string;
+  maturity: "public" | "public-ready" | "internal-first";
   featureAreas: FleetFeatureArea[];
   stack: {
     languages: string[];
@@ -85,6 +86,12 @@ function actionIcon(action: FleetRecommendationAction) {
   if (action === "prototype") return <FlaskConical className="size-3.5" />;
   if (action === "research") return <SearchCheck className="size-3.5" />;
   return <AlertTriangle className="size-3.5" />;
+}
+
+function maturityLabel(maturity: ProjectSummary["maturity"]): string {
+  if (maturity === "public") return "Public";
+  if (maturity === "public-ready") return "Public-ready";
+  return "Internal-first";
 }
 
 function recommendationSortValue(recommendation: FleetRecommendation): number {
@@ -181,9 +188,7 @@ function ProjectSidebar({
       [
         project.name,
         project.description,
-        project.tier,
-        project.category,
-        project.priority,
+        project.maturity,
         ...project.featureAreas.map((feature) => feature.label),
         ...project.stack.languages,
         ...project.stack.frameworks,
@@ -233,7 +238,7 @@ function ProjectSidebar({
                     <span className="flex items-center gap-2">
                       <span className="truncate font-medium">{project.name}</span>
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {project.priority}
+                        {maturityLabel(project.maturity)}
                       </Badge>
                     </span>
                     <span className="mt-1 line-clamp-1 text-xs font-normal text-muted-foreground">
@@ -378,9 +383,7 @@ export function ProjectsWorkspace({ selectedSlug }: ProjectsWorkspaceProps) {
               <div className="flex flex-wrap gap-1.5">
                 {selectedProject && (
                   <>
-                    <Badge variant="outline">{selectedProject.priority}</Badge>
-                    <Badge variant="secondary">{selectedProject.tier}</Badge>
-                    <Badge variant="outline">{selectedProject.category}</Badge>
+                    <Badge variant="secondary">{maturityLabel(selectedProject.maturity)}</Badge>
                   </>
                 )}
               </div>

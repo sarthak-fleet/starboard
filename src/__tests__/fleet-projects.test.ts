@@ -17,11 +17,14 @@ const project: FleetProjectSnapshot = {
   tier: "core",
   category: "product",
   priority: "P1",
+  maturity: "public-ready",
   sourcePath: "CodeVetter",
   statusSummary: "Evidence-backed verification loop for agent-written code.",
   plannedNext: ["Add runtime verification and replay checks"],
   deferred: [],
   readmeSummary: "Static review plus repo history, runtime checks, replay, and fix revalidation.",
+  recommendationContext:
+    "Feature map: repo intelligence, testing and quality. Existing stack: React, Tauri, Vitest. Recommend evidence-backed repository analysis tooling.",
   featureAreas: [
     {
       id: "repo-intelligence",

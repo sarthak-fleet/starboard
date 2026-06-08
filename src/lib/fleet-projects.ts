@@ -1,4 +1,5 @@
 export type FleetRecommendationAction = "use-now" | "prototype" | "research" | "skip";
+export type FleetProjectMaturity = "public" | "public-ready" | "internal-first";
 
 export interface FleetFeatureArea {
   id: string;
@@ -16,11 +17,13 @@ export interface FleetProjectSnapshot {
   tier: string;
   category: string;
   priority: string;
+  maturity: FleetProjectMaturity;
   sourcePath: string;
   statusSummary: string;
   plannedNext: string[];
   deferred: string[];
   readmeSummary: string;
+  recommendationContext: string;
   featureAreas: FleetFeatureArea[];
   stack: {
     dependencies: string[];
