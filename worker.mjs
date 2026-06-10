@@ -63,6 +63,14 @@ const worker = {
     // response — and the downstream CF Edge cache entry — is small.
     if (env.ASSETS) {
       const assetResp = await env.ASSETS.fetch(request);
+      // The assets binding answers If-None-Match revalidations with 304.
+      // Pass those through — falling through would serve the wrong page.
+      if (assetResp.status === 304) {
+        const headers = new Headers(assetResp.headers);
+        headers.set("Cache-Control", CACHE_CONTROL);
+        headers.set("x-edge-cache", "ASSET");
+        return new Response(null, { status: 304, headers });
+      }
       if (assetResp.ok && assetResp.body) {
         const acceptEnc = request.headers.get("accept-encoding") ?? "";
         const wantsGzip = acceptEnc.includes("gzip");
@@ -86,6 +94,10 @@ const worker = {
               status: assetResp.status,
               statusText: assetResp.statusText,
               headers,
+              // Body is already gzip-encoded; without this the runtime
+              // gzips it a second time (encodeBody defaults to
+              // "automatic") and browsers receive garbled bytes.
+              encodeBody: "manual",
             },
           );
         }
