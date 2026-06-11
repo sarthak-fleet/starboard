@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
@@ -181,8 +181,6 @@ function RoleCard({ role }: { role: StackBuilderReport["roles"][number] }) {
 }
 
 function StackBuilderContent() {
-  const { status } = useSession();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [goal, setGoal] = useQueryState("goal", parseAsStringLiteral(goals).withDefault("web-app"));
   const [searchQuery, setSearchQuery] = useQueryState("q", parseAsString.withDefault(""));
@@ -202,20 +200,12 @@ function StackBuilderContent() {
     revalidateOnFocus: false,
   });
 
-  if (status === "unauthenticated") {
-    router.replace("/");
-  }
-
-  if (status === "loading" || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
     );
-  }
-
-  if (status === "unauthenticated") {
-    return null;
   }
 
   const report = data ?? {
@@ -422,6 +412,27 @@ function StackBuilderContent() {
 }
 
 export default function StackBuilderPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/");
+    }
+  }, [router, status]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
   return (
     <Suspense
       fallback={
