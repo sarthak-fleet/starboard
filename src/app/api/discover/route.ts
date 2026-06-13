@@ -110,11 +110,15 @@ export async function GET(request: NextRequest) {
   }
 
   if (listId !== null) {
+    const parsedListId = parseInt(listId, 10);
+    if (!Number.isInteger(parsedListId)) {
+      return NextResponse.json({ error: "Invalid list_id" }, { status: 400 });
+    }
     whereClauses.push(
       "EXISTS (SELECT 1 FROM user_repo_lists url WHERE url.user_id = ? AND url.repo_id = r.id AND url.list_id = ?)"
     );
     whereArgs.push(userId);
-    whereArgs.push(parseInt(listId, 10));
+    whereArgs.push(parsedListId);
   }
 
   const whereSQL = whereClauses.join(" AND ");
