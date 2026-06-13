@@ -87,6 +87,23 @@ function PageSkeleton() {
 }
 
 export default function StarsPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/");
+    }
+  }, [router, status]);
+
+  if (status === "loading") {
+    return <PageSkeleton />;
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
   return (
     <Suspense fallback={<PageSkeleton />}>
       <StarsContent />
@@ -95,12 +112,6 @@ export default function StarsPage() {
 }
 
 function StarsContent() {
-  const { status } = useSession();
-  const router = useRouter();
-
-  if (status === "unauthenticated") {
-    router.replace("/");
-  }
 
   // URL-synced filter state via nuqs
   const [searchQuery, setSearchQuery] = useQueryState("q", parseAsString.withDefault(""));

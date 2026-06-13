@@ -6,18 +6,12 @@ import { auth } from "@/lib/auth";
 import { generateEmbedding } from "@/lib/embeddings";
 import { blendSearchIds, expandedSearchQuery, ftsSearchQuery } from "@/lib/search";
 
-// Cache embedding existence check per user (5 min TTL)
-const embeddingCheckCache = new Map<string, { value: boolean; expires: number }>();
 async function hasEmbeddings(userId: string): Promise<boolean> {
-  const cached = embeddingCheckCache.get(userId);
-  if (cached && Date.now() < cached.expires) return cached.value;
   const r = await db.execute({
     sql: "SELECT 1 FROM repo_embeddings re JOIN user_repos ur ON ur.repo_id = re.repo_id WHERE ur.user_id = ? LIMIT 1",
     args: [userId],
   });
-  const value = r.rows.length > 0;
-  embeddingCheckCache.set(userId, { value, expires: Date.now() + 5 * 60_000 });
-  return value;
+  return r.rows.length > 0;
 }
 
 export async function GET(request: NextRequest) {

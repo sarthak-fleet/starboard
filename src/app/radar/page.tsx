@@ -4,6 +4,7 @@ import { AlertTriangle, Archive, ArrowUpRight, GitBranch, Loader2, Radar, Star, 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 import useSWR from "swr";
 
 import { Badge } from "@/components/ui/badge";
@@ -126,15 +127,14 @@ function RepoRadarCard({ repo }: { repo: RadarRepo }) {
 export default function RadarPage() {
   const { status } = useSession();
   const router = useRouter();
-  const { data, error, isLoading } = useSWR<RadarReport>("/api/radar", fetcher, {
-    revalidateOnFocus: false,
-  });
 
-  if (status === "unauthenticated") {
-    router.replace("/");
-  }
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/");
+    }
+  }, [router, status]);
 
-  if (status === "loading" || isLoading) {
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -144,6 +144,22 @@ export default function RadarPage() {
 
   if (status === "unauthenticated") {
     return null;
+  }
+
+  return <RadarContent />;
+}
+
+function RadarContent() {
+  const { data, error, isLoading } = useSWR<RadarReport>("/api/radar", fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   const report = data ?? {

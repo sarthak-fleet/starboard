@@ -80,6 +80,23 @@ function PageSkeleton() {
 }
 
 export default function DiscoverPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/");
+    }
+  }, [router, status]);
+
+  if (status === "loading") {
+    return <PageSkeleton />;
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
   return (
     <Suspense fallback={<PageSkeleton />}>
       <DiscoverContent />
@@ -88,13 +105,6 @@ export default function DiscoverPage() {
 }
 
 function DiscoverContent() {
-  const { status } = useSession();
-  const router = useRouter();
-
-  if (status === "unauthenticated") {
-    router.replace("/");
-  }
-
   const [searchQuery, setSearchQuery] = useQueryState("q", parseAsString.withDefault(""));
   const [sortBy, setSortBy] = useQueryState("sort", parseAsStringLiteral(sortOptions).withDefault("most-stars"));
   const [selectedLanguages, setSelectedLanguages] = useQueryState("lang", parseAsArrayOf(parseAsString, ",").withDefault([]));
