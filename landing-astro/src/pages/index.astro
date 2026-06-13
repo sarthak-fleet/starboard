@@ -28,7 +28,7 @@ const DESCRIPTION =
       class="flex w-full max-w-6xl flex-col items-center gap-16 overflow-x-hidden px-5 py-12 sm:px-6 sm:py-20"
       style="font-family: var(--font-geist-sans);"
     >
-      <section class="grid w-full items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
+      <section class="flex w-full max-w-3xl flex-col items-start gap-10">
         <div class="flex min-w-0 flex-col items-start gap-6 text-left">
           <span class="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
             <span class="inline-block size-1.5 rounded-full bg-emerald-500"></span>
@@ -42,7 +42,8 @@ const DESCRIPTION =
           <p class="max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
             GitHub shows you a flat list. Starboard ranks your stars by
             recent releases, active development, and what you haven&apos;t
-            revisited — so you act on what matters, not scroll through noise.
+            revisited — handles 1,000+ repos without lag, so you act on
+            what matters instead of scrolling through noise.
           </p>
 
           <ul class="grid w-full gap-2 text-sm text-muted-foreground sm:grid-cols-2">
@@ -145,18 +146,35 @@ const DESCRIPTION =
           </p>
         </div>
 
-        {/* Right-column ambient gradient — mirrors the Next.js hero
-           layout so the two columns visually balance. The
-           SampleStarsBoard component is intentionally not ported (would
-           add ~6kb of inline markup and isn't LCP-critical). */}
-        <div class="relative min-w-0 hidden lg:block">
-          <div
-            class="absolute -inset-x-4 -top-6 -bottom-6 -z-10 rounded-3xl blur-2xl"
-            style="background: linear-gradient(to bottom right, oklch(0.488 0.243 264.376 / 0.15), transparent 50%, transparent);"
-          ></div>
-          <div class="aspect-[5/4] w-full rounded-2xl border bg-card/40 shadow-xl shadow-black/30"></div>
-        </div>
       </section>
+
+      {/* Signed footer — per LANDING_STANDARD.md, a signed paragraph
+         beats anonymous corporate copy. No fabricated testimonials,
+         no founder photo (deferred until a real asset exists). */}
+      <footer class="flex w-full max-w-3xl flex-col items-start gap-3 border-t pt-8 text-sm text-muted-foreground">
+        <p class="text-pretty">
+          Built by <a
+            href="https://github.com/sarthakagrawal927"
+            class="font-medium text-foreground underline-offset-4 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Sarthak</a> because his own starred list got unsearchable.
+          Free, open source, read-only on your GitHub account.
+        </p>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <a
+            href="https://github.com/sarthak-fleet/starboard"
+            class="underline-offset-4 hover:text-foreground hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Source on GitHub</a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="/discover"
+            class="underline-offset-4 hover:text-foreground hover:underline"
+          >Public discover</a>
+        </div>
+      </footer>
     </main>
   </div>
 </Layout>
