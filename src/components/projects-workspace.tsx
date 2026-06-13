@@ -19,6 +19,7 @@ import { useSession } from "next-auth/react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
+import { ShareReportButton } from "@/components/share-report-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -395,6 +396,13 @@ export function ProjectsWorkspace({ selectedSlug }: ProjectsWorkspaceProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {activeSlug && (
+                <ShareReportButton
+                  type="project-recommendations"
+                  projectSlug={activeSlug}
+                  label="Share report"
+                />
+              )}
               <Button variant="outline" size="sm" onClick={exportMarkdown} disabled={!recommendations?.markdown}>
                 <ArrowDownToLine className="mr-1.5 size-4" />
                 Markdown

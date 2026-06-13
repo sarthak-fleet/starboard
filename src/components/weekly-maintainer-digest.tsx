@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
+import { ShareReportButton } from "@/components/share-report-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -264,7 +265,7 @@ export function WeeklyActionDigest() {
 
   return (
     <section className="mb-4 rounded-lg border bg-card p-4 md:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold">Your Weekly Action Digest</h2>
@@ -276,26 +277,29 @@ export function WeeklyActionDigest() {
             Opportunities, risks, and suggested next actions from your library.
           </p>
         </div>
-        <div className="grid grid-cols-5 gap-1 text-center text-xs">
-          <div className="rounded-md border px-2 py-1.5">
-            <div className="font-medium">{data.summary.newlyStarred}</div>
-            <div className="text-muted-foreground">New</div>
-          </div>
-          <div className="rounded-md border px-2 py-1.5">
-            <div className="font-medium">{data.summary.recentReleases}</div>
-            <div className="text-muted-foreground">Releases</div>
-          </div>
-          <div className="rounded-md border px-2 py-1.5">
-            <div className="font-medium">{data.summary.highMomentum}</div>
-            <div className="text-muted-foreground">Growth</div>
-          </div>
-          <div className="rounded-md border px-2 py-1.5">
-            <div className="font-medium">{data.summary.atRisk}</div>
-            <div className="text-muted-foreground">At Risk</div>
-          </div>
-          <div className="rounded-md border px-2 py-1.5">
-            <div className="font-medium">{data.summary.suggestedActions}</div>
-            <div className="text-muted-foreground">Actions</div>
+        <div className="flex flex-col items-end gap-2">
+          <ShareReportButton type="cleanup" label="Share cleanup report" />
+          <div className="grid grid-cols-5 gap-1 text-center text-xs">
+            <div className="rounded-md border px-2 py-1.5">
+              <div className="font-medium">{data.summary.newlyStarred}</div>
+              <div className="text-muted-foreground">New</div>
+            </div>
+            <div className="rounded-md border px-2 py-1.5">
+              <div className="font-medium">{data.summary.recentReleases}</div>
+              <div className="text-muted-foreground">Releases</div>
+            </div>
+            <div className="rounded-md border px-2 py-1.5">
+              <div className="font-medium">{data.summary.highMomentum}</div>
+              <div className="text-muted-foreground">Growth</div>
+            </div>
+            <div className="rounded-md border px-2 py-1.5">
+              <div className="font-medium">{data.summary.atRisk}</div>
+              <div className="text-muted-foreground">At Risk</div>
+            </div>
+            <div className="rounded-md border px-2 py-1.5">
+              <div className="font-medium">{data.summary.suggestedActions}</div>
+              <div className="text-muted-foreground">Actions</div>
+            </div>
           </div>
         </div>
       </div>

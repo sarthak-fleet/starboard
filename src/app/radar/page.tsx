@@ -7,6 +7,9 @@ import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import useSWR from "swr";
 
+import { AlertInboxPanel } from "@/components/alert-inbox";
+import { AlertSettingsPanel } from "@/components/alert-settings";
+import { ShareReportButton } from "@/components/share-report-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -181,6 +184,7 @@ function RadarContent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ShareReportButton type="radar" label="Share radar report" />
             <Button asChild variant="outline" size="sm">
               <Link href="/discover">Discover</Link>
             </Button>
@@ -190,6 +194,11 @@ function RadarContent() {
           </div>
         </div>
       </header>
+
+      <section className="space-y-4 p-4 md:p-6">
+        <AlertSettingsPanel />
+        <AlertInboxPanel />
+      </section>
 
       <section className="grid gap-3 p-4 md:grid-cols-4 md:p-6">
         <Card className="rounded-lg py-4 shadow-none">

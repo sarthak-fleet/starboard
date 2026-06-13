@@ -150,6 +150,28 @@ CREATE INDEX IF NOT EXISTS idx_repo_star_snapshots_repo ON repo_star_snapshots(r
 CREATE INDEX IF NOT EXISTS idx_repo_threshold_events_crossed ON repo_threshold_events(crossed_at);
 CREATE INDEX IF NOT EXISTS idx_repo_threshold_events_threshold ON repo_threshold_events(threshold, crossed_at);
 
+CREATE TABLE IF NOT EXISTS user_alert_preferences (
+  user_id    TEXT PRIMARY KEY REFERENCES users(id),
+  rules      TEXT NOT NULL DEFAULT '{"lanes":[],"weeklyDigest":false,"inAppNotifications":false,"momentumMinDelta":100,"dormantDays":365}',
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS insight_reports (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id         TEXT NOT NULL REFERENCES users(id),
+  slug            TEXT NOT NULL UNIQUE,
+  report_type     TEXT NOT NULL,
+  title           TEXT NOT NULL,
+  snapshot_at     TEXT NOT NULL,
+  payload         TEXT NOT NULL,
+  redact_private  INTEGER NOT NULL DEFAULT 1,
+  is_public       INTEGER NOT NULL DEFAULT 1,
+  created_at      TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_insight_reports_slug ON insight_reports(slug);
+CREATE INDEX IF NOT EXISTS idx_insight_reports_user ON insight_reports(user_id, created_at DESC);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS repos_fts USING fts5(
   name,
   full_name,
