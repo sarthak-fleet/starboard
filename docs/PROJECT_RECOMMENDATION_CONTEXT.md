@@ -1,8 +1,10 @@
 # Project Recommendation Context
 
-Generated: 2026-06-06T21:14:19.624Z
+Generated: 2026-06-06T21:14:19.624Z (tooling note refreshed 2026-06-20)
 
 This file is a CodeVetter Repo Unpacked-inspired audit written for Starboard recommendations. It is intentionally local, evidence-oriented, and safe to commit: it records product context, feature areas, stack inventory, and recommendation guidance without secrets or environment values.
+
+**2026-06-20:** Removed `@saas-maker/eslint-config`, `@saas-maker/prettier-config`, `@saas-maker/tsconfig`, and `@saas-maker/astro-landing`. Local eslint/tsconfig and `scripts/run-*-astro-landing.mjs`.
 
 ## Project Identity
 
@@ -103,9 +105,6 @@ Direct dependencies:
 
 Development dependencies:
 - `@opennextjs/cloudflare`
-- `@saas-maker/eslint-config`
-- `@saas-maker/prettier-config`
-- `@saas-maker/tsconfig`
 - `@tailwindcss/postcss`
 - `@tailwindcss/vite`
 - `@types/node`
