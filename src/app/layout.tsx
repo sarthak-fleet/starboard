@@ -5,7 +5,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 import { SaaSMakerFeedback } from "@/components/saasmaker-feedback";
-import { SaasMakerAnalytics } from "@/components/SaasMakerAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -75,7 +74,6 @@ export default function RootLayout({
         <Providers>
           {children}
           <SaaSMakerFeedback />
-          <SaasMakerAnalytics />
         </Providers>
       </body>
     </html>

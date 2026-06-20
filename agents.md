@@ -87,7 +87,7 @@ The seed-popular GitHub Action runs `pnpm db:migrate` before `pnpm db:seed-popul
 - **Facets**: language/list/tag counts computed server-side in `GET /api/stars`.
 - **Virtualized grid** via `@tanstack/react-virtual`.
 - **NextAuth v5 beta** (not v4 stable) — session shape differs. Access token stored for GitHub API sync.
-- **SaaS Maker**: feedback widget, analytics, testimonials, changelog-widget integrated.
+- **SaaS Maker**: feedback widget, testimonials, changelog-widget integrated. (SaaS Maker analytics removed — PostHog is the analytics path.)
 - Pre-push hook runs lint.
 
 <!-- FLEET-GUIDANCE:START -->
