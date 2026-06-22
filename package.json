@@ -27,6 +27,7 @@
     "deploy:cf": "pnpm build:cf && opennextjs-cloudflare deploy",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
     "test": "vitest run",
+    "smoke:knowledgebase": "node scripts/smoke-knowledgebase.mjs",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:mobile": "playwright test --project=mobile",
