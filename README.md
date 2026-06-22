@@ -24,7 +24,8 @@ both personal stars and seeded popular repositories.
 | Hosting | Cloudflare Workers (`starboard`) via `@opennextjs/cloudflare` |
 | Database | Turso (libSQL); raw SQL, no ORM |
 | Auth | NextAuth v5 + GitHub OAuth |
-| AI | Cloudflare Workers AI binding for embeddings; free-ai gateway fallback for Node-based GitHub Actions |
+| RAG search | Shared Cloudflare `knowledgebase` Worker for relevance search |
+| AI | Cloudflare Workers AI binding for non-RAG embeddings; free-ai gateway fallback for Node-based GitHub Actions |
 | CI/CD | GitHub Actions (`.github/workflows/deploy.yml`) — auto-deploy to Cloudflare on push to `main`; scheduled Actions seed/enrich/embed repos in Turso |
 
 ## Features
@@ -51,7 +52,8 @@ both personal stars and seeded popular repositories.
 - **SWR** for client-side data fetching
 - **nuqs** for URL-backed filter/sort state
 - **@tanstack/react-virtual** for virtualized scrolling
-- **Cloudflare Workers AI** for embeddings, with free-ai HTTP fallback in Node contexts
+- **Shared knowledgebase RAG** for relevance search
+- **Cloudflare Workers AI** for non-RAG embeddings, with free-ai HTTP fallback in Node contexts
 
 ## Local Development
 

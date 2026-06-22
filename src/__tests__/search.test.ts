@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { describe, expect, it } from "vitest";
 
 import { cosineSimilarity } from "@/lib/embeddings";
@@ -99,6 +101,31 @@ describe("blendSearchIds", () => {
 
     expect(result.slice(0, 3)).toEqual([1, 2, 3]);
     expect(result).toContain(90);
+  });
+});
+
+describe("stars relevance RAG contract", () => {
+  it("uses knowledgebase RAG without a local vector-search fallback", () => {
+    const route = readFileSync(
+      join(process.cwd(), "src/app/api/stars/route.ts"),
+      "utf-8"
+    );
+
+    expect(route).toContain("searchStarboardRag");
+    expect(route).not.toContain("generateEmbedding");
+    expect(route).not.toContain("vector_top_k");
+  });
+
+  it("reads Cloudflare Worker bindings and vars for knowledgebase RAG", () => {
+    const client = readFileSync(
+      join(process.cwd(), "src/lib/knowledgebase.ts"),
+      "utf-8"
+    );
+
+    expect(client).toContain("getCloudflareContext");
+    expect(client).toContain("RAG_SERVICE_KEY?.trim() || cloudflareEnv().RAG_SERVICE_KEY");
+    expect(client).toContain("STARBOARD_RAG_INDEX_ID?.trim() || cloudflareEnv().STARBOARD_RAG_INDEX_ID");
+    expect(client).toContain("RAG_SERVICE");
   });
 });
 

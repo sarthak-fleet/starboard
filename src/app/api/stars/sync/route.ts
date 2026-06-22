@@ -11,7 +11,7 @@ import {
   fetchPublicStarLists,
   type GitHubStarList,
 } from "@/lib/github-lists";
-import { ingestStarboardRagDocuments } from "@/lib/rag-service";
+import { ingestStarboardRagDocuments } from "@/lib/knowledgebase";
 import { isRateLimited } from "@/lib/rate-limit";
 
 const BOGUS_IMPORTED_SORT_LISTS = new Set([
@@ -191,7 +191,7 @@ export async function POST() {
           }))
         );
       } catch (error) {
-        console.warn("RAG service ingest failed:", error);
+        console.warn("knowledgebase ingest failed:", error);
       }
     }
 

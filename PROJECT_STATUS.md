@@ -32,7 +32,7 @@ GitHub OAuth (NextAuth)
 Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, user_repos, tags, lists, comments, votes)
         │
         ├── Full-text + facet search (GET /api/stars)
-        ├── Semantic search: knowledgebase Worker (preferred) OR Turso F32_BLOB(768) + libsql_vector_idx (fallback)
+        ├── Semantic search: knowledgebase Worker; lexical-only when shared RAG is unavailable
         ├── Fleet snapshot: data/fleet-projects.generated.json → My Projects scorer
         ├── Radar: maintainer/release signals → alert preferences + inbox
         └── Insight reports: slugged public snapshots (radar, recommendations, cleanup)
@@ -46,7 +46,7 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 |---------|--------|
 | Hosting | Cloudflare Worker `starboard` via OpenNext |
 | Database | Turso — apply schema with `pnpm db:migrate` |
-| Secrets | `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `TURSO_*`; optional `RAG_SERVICE_KEY`, `STARBOARD_RAG_INDEX_ID` |
+| Secrets | `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, `TURSO_*`; `RAG_SERVICE_KEY`, `STARBOARD_RAG_INDEX_ID` for relevance RAG |
 | Embedding model | `@cf/baai/bge-base-en-v1.5` — change model + dimension in all three contract files together |
 | Fleet snapshot | Refresh `data/fleet-projects.generated.json` after fleet `PROJECT_STATUS.md` / dependency changes |
 | Scheduled jobs | GitHub Actions seed-popular runs `db:migrate` then `db:seed-popular` — primary self-heal for vector dimension drift |
@@ -59,7 +59,7 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 |-------|-----------|
 | Foundation | GitHub OAuth (NextAuth v5), OpenNext Cloudflare deploy, core dashboard with sync, tags, collections, full-text search, virtual scroll |
 | Repo intelligence | Repo detail (`/explore`), comments/votes, public shared lists, legal/marketing shell |
-| Semantic search | Workers AI embeddings, Turso vector fallback, optional knowledgebase Worker integration, seed-embeddings backfill |
+| Semantic search | knowledgebase Worker integration for relevance search; local embeddings retained for non-RAG Starboard features |
 | Fleet recommendations | My Projects scorer against `fleet-projects.generated.json`, fixture-backed eval harness, OSS integration evaluation |
 | Discovery & radar | Discover page, scheduled seed/enrich/embed, radar maintainer signals, stack builder, first-run UX and digest preview surfaces |
 | Alerts & reports | Weekly alert inbox/preferences, digest payloads, shareable insight reports at stable public URLs |
@@ -97,8 +97,8 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 
 ### Search and embeddings
 - Workers AI embedding generation with runtime dimension assertion.
-- Turso vector index fallback path (`repo_embeddings`, cosine `libsql_vector_idx`).
-- Shared-RAG integration: when `RAG_SERVICE_KEY` and `STARBOARD_RAG_INDEX_ID` are set, relevance search prefers the fleet `knowledgebase` Worker with sync ingest for new repos; Turso remains fallback.
+- Turso vector index path (`repo_embeddings`, cosine `libsql_vector_idx`) retained for non-RAG Starboard features such as similar repos, discover, and recommendations.
+- Shared-RAG integration: when `RAG_SERVICE_KEY` and `STARBOARD_RAG_INDEX_ID` are set as Worker secrets/vars or local env, relevance search uses the fleet `knowledgebase` Worker with sync ingest for new repos; if shared RAG is unavailable, relevance search falls back to lexical results instead of local vector search.
 - `pnpm db:seed-embeddings` backfill script; embedding dimension guard in migrate runner.
 - free-ai HTTP fallback for Node-based GitHub Actions embedding contexts.
 
@@ -136,7 +136,7 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 2. **Recommendation scoring discipline** — tune production weights only when `recommendation-eval` fixture harness stays green across scorer changes.
 3. **Weekly alert email delivery** — wire transactional email after in-app digest payloads prove stable in production (in-app first).
 4. **Large-library performance** — profile sync, tag, collection, and project recommendation flows for users with 1000+ stars; optimize virtual scroll and API facet paths if needed.
-5. **RAG path hardening** — verify knowledgebase binding ingest lag and fallback behavior under partial Worker outages.
+5. **RAG path hardening** — verify knowledgebase binding ingest lag and lexical-only behavior under partial Worker outages.
 
 ### Deferred
 - Organization/team dashboards and multi-user workspaces.
@@ -149,4 +149,4 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 - Email delivery for weekly alerts is not wired — digest payloads and inbox exist; SMTP/Resend path is ops-owned next step.
 - Recommendation scorer weights are fixture-validated but not yet tuned against large real-user libraries.
 - GitHub HTML scraping for star lists is brittle to markup changes — monitor sync error rates.
-- knowledgebase Worker dependency is optional; without it, semantic quality depends on Turso embedding freshness alone.
+- knowledgebase Worker dependency is optional; without it, `/api/stars` relevance search falls back to lexical-only results. Turso embeddings remain for non-RAG discover/similar/recommendation features.

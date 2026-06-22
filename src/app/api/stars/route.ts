@@ -3,17 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
-import { generateEmbedding } from "@/lib/embeddings";
-import { searchStarboardRag } from "@/lib/rag-service";
+import { searchStarboardRag } from "@/lib/knowledgebase";
 import { blendSearchIds, expandedSearchQuery, ftsSearchQuery } from "@/lib/search";
-
-async function hasEmbeddings(userId: string): Promise<boolean> {
-  const r = await db.execute({
-    sql: "SELECT 1 FROM repo_embeddings re JOIN user_repos ur ON ur.repo_id = re.repo_id WHERE ur.user_id = ? LIMIT 1",
-    args: [userId],
-  });
-  return r.rows.length > 0;
-}
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -44,7 +35,6 @@ export async function GET(request: NextRequest) {
     const lexicalQuery = ftsSearchQuery(q);
     const RRF_K = 60;
     const VEC_TOP_K = 500;
-    const VEC_DIST_MAX = 0.55; // cosine distance cutoff (lower = more similar)
     const useSemanticSearch = sort === "relevance";
 
     // 1. Lexical matches through FTS5 over repo name/full_name/description/language/topics.
@@ -77,32 +67,14 @@ export async function GET(request: NextRequest) {
         }).then((result) => result.rows.map((r) => r.id as number))
       : Promise.resolve([]);
 
-    // 2. Semantic matches via vector_top_k. Pull distance, drop the noisy tail.
-    //    vector_top_k is global; user filtering happens in the main query.
+    // 2. Semantic matches come only from the shared knowledgebase Worker.
+    //    If it is not configured or returns no matches, relevance falls back to
+    //    lexical matches instead of silently using a second local vector path.
     const semIdsPromise = useSemanticSearch
       ? searchStarboardRag(userId, expandedSearchQuery(q), VEC_TOP_K)
-          .then(async (ragIds) => {
-            if (ragIds && ragIds.length > 0) return ragIds;
-            if (!(await hasEmbeddings(userId))) return [];
-            const queryEmbedding = await generateEmbedding(expandedSearchQuery(q));
-            const vectorResult = await db.execute({
-              sql: `SELECT re.repo_id,
-                           vector_distance_cos(re.embedding, vector(?)) AS dist
-                    FROM vector_top_k('idx_repo_embeddings_vec', vector(?), ?) AS vt
-                    JOIN repo_embeddings re ON re.rowid = vt.id
-                    ORDER BY dist ASC`,
-              args: [
-                JSON.stringify(queryEmbedding),
-                JSON.stringify(queryEmbedding),
-                VEC_TOP_K,
-              ],
-            });
-            return vectorResult.rows
-              .filter((r) => (r.dist as number) <= VEC_DIST_MAX)
-              .map((r) => r.repo_id as number);
-          })
+          .then((ragIds) => ragIds ?? [])
           .catch((e) => {
-            console.warn("Semantic search failed:", e);
+            console.warn("knowledgebase RAG search failed:", e);
             return [];
           })
       : Promise.resolve([]);

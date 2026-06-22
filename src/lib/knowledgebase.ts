@@ -4,6 +4,12 @@ type ServiceBinding = {
   fetch(request: Request): Promise<Response>;
 };
 
+type CloudflareEnv = {
+  RAG_SERVICE?: ServiceBinding;
+  RAG_SERVICE_KEY?: string;
+  STARBOARD_RAG_INDEX_ID?: string;
+};
+
 interface RagResult {
   document_id: string;
   chunk_id: string;
@@ -20,21 +26,25 @@ interface RagDocument {
 const RAG_SERVICE_URL =
   process.env.RAG_SERVICE_URL || "https://knowledgebase.sarthakagrawal927.workers.dev";
 
+function cloudflareEnv(): CloudflareEnv {
+  try {
+    const { env } = getCloudflareContext();
+    return env as CloudflareEnv;
+  } catch {
+    return {};
+  }
+}
+
 function serviceKey(): string {
-  return process.env.RAG_SERVICE_KEY?.trim() || "";
+  return process.env.RAG_SERVICE_KEY?.trim() || cloudflareEnv().RAG_SERVICE_KEY?.trim() || "";
 }
 
 function indexId(): string {
-  return process.env.STARBOARD_RAG_INDEX_ID?.trim() || "";
+  return process.env.STARBOARD_RAG_INDEX_ID?.trim() || cloudflareEnv().STARBOARD_RAG_INDEX_ID?.trim() || "";
 }
 
 function serviceBinding(): ServiceBinding | null {
-  try {
-    const { env } = getCloudflareContext();
-    return (env as { RAG_SERVICE?: ServiceBinding }).RAG_SERVICE ?? null;
-  } catch {
-    return null;
-  }
+  return cloudflareEnv().RAG_SERVICE ?? null;
 }
 
 export function isRagServiceConfigured(): boolean {
