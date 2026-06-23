@@ -12,6 +12,7 @@
 // All non-GET, non-`/` requests pass straight through to OpenNext.
 
 import openNext from "./.open-next/worker.js";
+import { withTiming } from "./timing.mjs";
 
 // Durable Objects must be re-exported from the entry that wrangler.toml
 // points at, otherwise the bindings can't resolve them at deploy time.
@@ -37,7 +38,7 @@ function hasAuthCookie(request) {
 }
 
 const worker = {
-  async fetch(request, env, ctx) {
+  fetch: withTiming(async function fetch(request, env, ctx) {
     if (request.method !== "GET") {
       return openNext.fetch(request, env, ctx);
     }
@@ -150,7 +151,7 @@ const worker = {
     });
     clientResponse.headers.set("x-edge-cache", "MISS");
     return clientResponse;
-  },
+  }),
 };
 
 export default worker;
