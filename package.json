@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "biome check .",
     "biome:lint": "biome lint .",
     "format": "biome format --write .",
     "format:check": "biome format .",
@@ -66,13 +66,7 @@
     "@vitest/coverage-v8": "4.1.5",
     "babel-plugin-react-compiler": "1.0.0",
     "beasties": "^0.3.5",
-    "eslint": "10.2.1",
-    "eslint-config-next": "16.2.4",
-    "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-simple-import-sort": "13.0.0",
     "husky": "9.1.7",
-    "prettier": "3.8.3",
-    "prettier-plugin-tailwindcss": "0.8.0",
     "shadcn": "4.4.0",
     "tailwindcss": "4",
     "tsx": "^4.21.0",
@@ -80,10 +74,5 @@
     "typescript": "6.0.3",
     "vitest": "4.1.5",
     "wrangler": "4.85.0"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "eslint-plugin-react@7.37.5": "patches/eslint-plugin-react@7.37.5.patch"
-    }
   }
 }
