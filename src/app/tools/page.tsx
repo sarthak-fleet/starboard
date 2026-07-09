@@ -55,7 +55,7 @@ interface ToolsResponse {
 }
 
 const fetcher = async <T,>(url: string): Promise<T> => {
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: 'no-store' });
   if (!response.ok) throw new Error(`${response.status}`);
   return response.json();
 };

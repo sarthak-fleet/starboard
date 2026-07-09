@@ -5,7 +5,16 @@ import { db } from '@/db';
 import { auth } from '@/lib/auth';
 import { getToolDefinition, getToolUrl, TOOL_ACCURACY_DISCLAIMER } from '@/lib/repo-tools';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type ToolScope = 'user' | 'discover' | 'all';
+
+function json(data: unknown, init?: ResponseInit) {
+  const headers = new Headers(init?.headers);
+  headers.set('Cache-Control', 'no-store');
+  return NextResponse.json(data, { ...init, headers });
+}
 
 function parseScope(value: string | null): ToolScope {
   return value === 'user' || value === 'all' ? value : 'discover';
@@ -126,7 +135,7 @@ export async function GET(request: NextRequest) {
   const scopeSql = scopeClause(scope, session?.user?.githubId ?? null, minStars);
 
   if (!scopeSql) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const languageSql = languageClause(languages);
@@ -191,7 +200,7 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    return NextResponse.json({
+    return json({
       scope,
       minStars,
       minConfidence,
@@ -259,7 +268,7 @@ export async function GET(request: NextRequest) {
     args: [...scopeSql.joinArgs, minConfidence, ...scopeSql.whereArgs, ...languageSql.args, limit],
   });
 
-  return NextResponse.json({
+  return json({
     scope,
     minStars,
     minConfidence,
