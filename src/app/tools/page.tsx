@@ -4,12 +4,10 @@ import {
   ArrowUpRight,
   ExternalLink,
   Info,
-  Languages,
   Loader2,
   Search,
   ShieldCheck,
   Wrench,
-  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -19,12 +17,6 @@ import useSWR from 'swr';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
 type ToolScope = 'discover' | 'user' | 'all';
@@ -39,17 +31,10 @@ interface ToolSummary {
   maxConfidence: number;
 }
 
-interface LanguageFacet {
-  language: string;
-  repoCount: number;
-}
-
 interface ToolsResponse {
   scope: ToolScope;
   minStars: number;
   minConfidence: number;
-  languages: string[];
-  languageFacets: LanguageFacet[];
   disclaimer: string;
   tools: ToolSummary[];
 }
@@ -95,23 +80,12 @@ function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
   const [scope, setScope] = useState<ToolScope>('discover');
   const [minConfidence, setMinConfidence] = useState(0);
   const [query, setQuery] = useState('');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const languageQuery =
-    selectedLanguages.length > 0
-      ? `&languages=${selectedLanguages.map(encodeURIComponent).join(',')}`
-      : '';
-  const apiUrl = `/api/tools?scope=${scope}&min_confidence=${minConfidence}&min_stars=10000&limit=300${languageQuery}`;
-  const { data, error, isLoading } = useSWR<ToolsResponse>(apiUrl, fetcher, {
+  const apiUrl = `/api/tools?scope=${scope}&min_confidence=${minConfidence}&min_stars=10000&limit=300`;
+  const { data, error, isLoading, isValidating } = useSWR<ToolsResponse>(apiUrl, fetcher, {
+    keepPreviousData: true,
     revalidateOnFocus: false,
   });
-
-  const toggleLanguage = (language: string) => {
-    setSelectedLanguages((current) =>
-      current.includes(language)
-        ? current.filter((selected) => selected !== language)
-        : [...current, language]
-    );
-  };
+  const isInitialLoading = isLoading && !data;
 
   const tools = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -161,22 +135,41 @@ function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
           <div className="flex items-start gap-2">
             <Info className="mt-0.5 size-4 shrink-0" />
-            <p>{data?.disclaimer}</p>
+            <p>
+              {data?.disclaimer ??
+                'Loading evidence-based tool intelligence from repository manifests and metadata.'}
+            </p>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-2xl font-semibold">{formatNumber(tools.length)}</div>
+            <div className="text-2xl font-semibold">
+              {isInitialLoading ? (
+                <span className="block h-8 w-16 animate-pulse rounded bg-muted" />
+              ) : (
+                formatNumber(tools.length)
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">detected tools</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-2xl font-semibold">{formatNumber(totalRepoMentions)}</div>
+            <div className="text-2xl font-semibold">
+              {isInitialLoading ? (
+                <span className="block h-8 w-20 animate-pulse rounded bg-muted" />
+              ) : (
+                formatNumber(totalRepoMentions)
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">repo-tool matches</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-2xl font-semibold">
-              {formatNumber(highConfidenceTools)} / {formatNumber(categoryCount)}
+              {isInitialLoading ? (
+                <span className="block h-8 w-24 animate-pulse rounded bg-muted" />
+              ) : (
+                `${formatNumber(highConfidenceTools)} / ${formatNumber(categoryCount)}`
+              )}
             </div>
             <div className="text-sm text-muted-foreground">high-confidence tools / categories</div>
           </div>
@@ -196,7 +189,7 @@ function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
               </Button>
             ))}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[640px]">
+          <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[520px]">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -206,39 +199,6 @@ function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
                 className="pl-9"
               />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="justify-start gap-2">
-                  <Languages className="size-4" />
-                  Language
-                  {selectedLanguages.length > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {selectedLanguages.length}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                {(data?.languageFacets ?? []).map((facet) => (
-                  <DropdownMenuCheckboxItem
-                    key={facet.language}
-                    checked={selectedLanguages.includes(facet.language)}
-                    onCheckedChange={() => toggleLanguage(facet.language)}
-                    onSelect={(event) => event.preventDefault()}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{facet.language}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatNumber(facet.repoCount)}
-                    </span>
-                  </DropdownMenuCheckboxItem>
-                ))}
-                {data?.languageFacets?.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    No languages detected
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
             <Button
               variant={minConfidence >= 90 ? 'default' : 'outline'}
               size="sm"
@@ -251,32 +211,8 @@ function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
           </div>
         </div>
 
-        {selectedLanguages.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            {selectedLanguages.map((language) => (
-              <Badge key={language} variant="secondary" className="gap-1 pr-1">
-                {language}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-5"
-                  aria-label={`Remove ${language} filter`}
-                  onClick={() => toggleLanguage(language)}
-                >
-                  <X className="size-3" />
-                </Button>
-              </Badge>
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedLanguages([])}
-            >
-              Clear languages
-            </Button>
-          </div>
+        {isValidating && data && (
+          <div className="text-sm text-muted-foreground">Refreshing tool intelligence...</div>
         )}
 
         {error && (
@@ -286,9 +222,12 @@ function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
         )}
 
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {isLoading
+          {isInitialLoading
             ? Array.from({ length: 12 }).map((_, index) => (
-                <Card key={index} className="h-40 rounded-lg py-4 shadow-none" />
+                <Card
+                  key={index}
+                  className="h-40 animate-pulse rounded-lg bg-muted/40 py-4 shadow-none"
+                />
               ))
             : tools.map((tool) => (
                 <Link

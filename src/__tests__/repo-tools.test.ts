@@ -63,8 +63,9 @@ describe('repo tool detection', () => {
     });
 
     expect(keys(result)).toEqual(
-      expect.arrayContaining(['typescript', 'react', 'cloudflare-workers', 'langchain'])
+      expect.arrayContaining(['react', 'cloudflare-workers', 'langchain'])
     );
+    expect(keys(result)).not.toContain('typescript');
     expect(result.find((tool) => tool.toolKey === 'langchain')?.confidence).toBeLessThan(60);
   });
 

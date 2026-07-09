@@ -14,6 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
     sql: `SELECT tool_key, tool_name, category, confidence, sources, detected_at
           FROM repo_tools
           WHERE repo_id = ?
+            AND category != 'language'
           ORDER BY confidence DESC, tool_name ASC`,
     args: [repoId],
   });

@@ -5,7 +5,6 @@ export type ToolCategory =
   | 'database'
   | 'framework'
   | 'infra'
-  | 'language'
   | 'library'
   | 'package-manager'
   | 'testing'
@@ -34,19 +33,9 @@ export interface RepoSignalSource {
 }
 
 export const TOOL_ACCURACY_DISCLAIMER =
-  'Tool detection is evidence-based, not a full runtime audit. Package manifests, lockfiles, and SBOMs are high-confidence; README, topics, language, and AI metadata are lower-confidence signals. Accuracy varies by ecosystem, especially for C/C++ and custom monorepos.';
+  'Tool detection is evidence-based, not a full runtime audit. Package manifests, lockfiles, and SBOMs are high-confidence; README, topics, and AI metadata are lower-confidence signals. Repository language is metadata, not counted as a tool. Accuracy varies by ecosystem, especially for C/C++ and custom monorepos.';
 
 const toolDefinitions: ToolDefinition[] = [
-  def('typescript', 'TypeScript', 'language', ['typescript', 'tsconfig']),
-  def('javascript', 'JavaScript', 'language', ['javascript', 'nodejs', 'node.js']),
-  def('python', 'Python', 'language', ['python', 'pyproject']),
-  def('rust', 'Rust', 'language', ['rust', 'cargo']),
-  def('go', 'Go', 'language', ['go', 'golang', 'go.mod']),
-  def('java', 'Java', 'language', ['java', 'maven', 'gradle']),
-  def('kotlin', 'Kotlin', 'language', ['kotlin']),
-  def('swift', 'Swift', 'language', ['swift', 'package.swift']),
-  def('c', 'C', 'language', ['c']),
-  def('cpp', 'C++', 'language', ['c++', 'cpp', 'cxx']),
   def('react', 'React', 'framework', ['react', 'react-dom']),
   def('next', 'Next.js', 'framework', ['next', 'nextjs', 'next.js']),
   def('vite', 'Vite', 'build', ['vite']),
@@ -287,8 +276,6 @@ function parseStringArray(value: string[] | string | null | undefined): string[]
 
 export function detectToolsFromRepoSignals(source: RepoSignalSource): ToolDetection[] {
   const detections: ToolDetection[] = [];
-  const languageTool = source.language ? knownTool(source.language) : null;
-  if (languageTool) detections.push(detection(languageTool, 60, 'github-language'));
 
   for (const topic of parseStringArray(source.topics)) {
     const tool = knownTool(topic);

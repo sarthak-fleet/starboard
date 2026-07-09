@@ -165,7 +165,9 @@ CREATE TABLE IF NOT EXISTS repo_tools (
 );
 
 CREATE INDEX IF NOT EXISTS idx_repo_tools_tool ON repo_tools(tool_key);
+CREATE INDEX IF NOT EXISTS idx_repo_tools_tool_confidence ON repo_tools(tool_key, confidence DESC, repo_id);
 CREATE INDEX IF NOT EXISTS idx_repo_tools_category_tool ON repo_tools(category, tool_key);
+CREATE INDEX IF NOT EXISTS idx_repo_tools_category_confidence_tool ON repo_tools(category, confidence DESC, tool_key);
 CREATE INDEX IF NOT EXISTS idx_repo_tools_repo ON repo_tools(repo_id);
 CREATE INDEX IF NOT EXISTS idx_repo_tools_confidence ON repo_tools(confidence);
 

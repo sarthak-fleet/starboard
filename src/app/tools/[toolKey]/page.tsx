@@ -5,11 +5,9 @@ import {
   ArrowUpRight,
   ExternalLink,
   Info,
-  Languages,
   Loader2,
   Search,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -20,12 +18,6 @@ import useSWR from 'swr';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
 type ToolScope = 'discover' | 'user' | 'all';
@@ -56,16 +48,9 @@ interface ToolRepo {
   };
 }
 
-interface LanguageFacet {
-  language: string;
-  repoCount: number;
-}
-
 interface ToolReposResponse {
   scope: ToolScope;
   disclaimer: string;
-  languages: string[];
-  languageFacets: LanguageFacet[];
   tool: ToolSummary;
   repos: ToolRepo[];
 }
@@ -99,25 +84,14 @@ export default function ToolDetailPage() {
   const [scope, setScope] = useState<ToolScope>('discover');
   const [minConfidence, setMinConfidence] = useState(0);
   const [query, setQuery] = useState('');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const toolKey = Array.isArray(params.toolKey) ? params.toolKey[0] : params.toolKey;
   const decodedToolKey = decodeURIComponent(toolKey ?? '');
-  const languageQuery =
-    selectedLanguages.length > 0
-      ? `&languages=${selectedLanguages.map(encodeURIComponent).join(',')}`
-      : '';
-  const apiUrl = `/api/tools?scope=${scope}&min_confidence=${minConfidence}&min_stars=10000&tool=${encodeURIComponent(decodedToolKey)}&limit=500${languageQuery}`;
-  const { data, error, isLoading } = useSWR<ToolReposResponse>(apiUrl, fetcher, {
+  const apiUrl = `/api/tools?scope=${scope}&min_confidence=${minConfidence}&min_stars=10000&tool=${encodeURIComponent(decodedToolKey)}&limit=500`;
+  const { data, error, isLoading, isValidating } = useSWR<ToolReposResponse>(apiUrl, fetcher, {
+    keepPreviousData: true,
     revalidateOnFocus: false,
   });
-
-  const toggleLanguage = (language: string) => {
-    setSelectedLanguages((current) =>
-      current.includes(language)
-        ? current.filter((selected) => selected !== language)
-        : [...current, language]
-    );
-  };
+  const isInitialLoading = isLoading && !data;
 
   const repos = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -156,7 +130,8 @@ export default function ToolDetailPage() {
                 )}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Repositories where Starboard detected this tool, framework, language, or platform.
+                Repositories where Starboard detected this tool, framework, build system, or
+                platform.
               </p>
             </div>
           </div>
@@ -174,15 +149,33 @@ export default function ToolDetailPage() {
       <section className="space-y-4 p-4 md:p-6">
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-2xl font-semibold">{formatNumber(tool?.repoCount ?? 0)}</div>
+            <div className="text-2xl font-semibold">
+              {isInitialLoading ? (
+                <span className="block h-8 w-16 animate-pulse rounded bg-muted" />
+              ) : (
+                formatNumber(tool?.repoCount ?? 0)
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">matching repositories</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-2xl font-semibold">{tool?.avgConfidence ?? 0}%</div>
+            <div className="text-2xl font-semibold">
+              {isInitialLoading ? (
+                <span className="block h-8 w-16 animate-pulse rounded bg-muted" />
+              ) : (
+                `${tool?.avgConfidence ?? 0}%`
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">average confidence</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-2xl font-semibold">{tool?.category ?? 'tool'}</div>
+            <div className="text-2xl font-semibold">
+              {isInitialLoading ? (
+                <span className="block h-8 w-20 animate-pulse rounded bg-muted" />
+              ) : (
+                (tool?.category ?? 'tool')
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">category</div>
           </div>
         </div>
@@ -190,7 +183,10 @@ export default function ToolDetailPage() {
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
           <div className="flex items-start gap-2">
             <Info className="mt-0.5 size-4 shrink-0" />
-            <p>{data?.disclaimer}</p>
+            <p>
+              {data?.disclaimer ??
+                'Loading evidence-based tool intelligence from repository manifests and metadata.'}
+            </p>
           </div>
         </div>
 
@@ -208,7 +204,7 @@ export default function ToolDetailPage() {
               </Button>
             ))}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[640px]">
+          <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[520px]">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -218,39 +214,6 @@ export default function ToolDetailPage() {
                 className="pl-9"
               />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="justify-start gap-2">
-                  <Languages className="size-4" />
-                  Language
-                  {selectedLanguages.length > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {selectedLanguages.length}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                {(data?.languageFacets ?? []).map((facet) => (
-                  <DropdownMenuCheckboxItem
-                    key={facet.language}
-                    checked={selectedLanguages.includes(facet.language)}
-                    onCheckedChange={() => toggleLanguage(facet.language)}
-                    onSelect={(event) => event.preventDefault()}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{facet.language}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatNumber(facet.repoCount)}
-                    </span>
-                  </DropdownMenuCheckboxItem>
-                ))}
-                {data?.languageFacets?.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    No languages detected
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
             <Button
               variant={minConfidence >= 90 ? 'default' : 'outline'}
               size="sm"
@@ -263,32 +226,8 @@ export default function ToolDetailPage() {
           </div>
         </div>
 
-        {selectedLanguages.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            {selectedLanguages.map((language) => (
-              <Badge key={language} variant="secondary" className="gap-1 pr-1">
-                {language}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-5"
-                  aria-label={`Remove ${language} filter`}
-                  onClick={() => toggleLanguage(language)}
-                >
-                  <X className="size-3" />
-                </Button>
-              </Badge>
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedLanguages([])}
-            >
-              Clear languages
-            </Button>
-          </div>
+        {isValidating && data && (
+          <div className="text-sm text-muted-foreground">Refreshing tool repositories...</div>
         )}
 
         {error && (
@@ -297,10 +236,13 @@ export default function ToolDetailPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {isInitialLoading ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 9 }).map((_, index) => (
-              <Card key={index} className="h-40 rounded-lg py-4 shadow-none" />
+              <Card
+                key={index}
+                className="h-40 animate-pulse rounded-lg bg-muted/40 py-4 shadow-none"
+              />
             ))}
           </div>
         ) : (
