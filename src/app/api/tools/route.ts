@@ -11,8 +11,9 @@ function parseScope(value: string | null): ToolScope {
   return value === 'user' || value === 'all' ? value : 'discover';
 }
 
-function scopeClause(scope: ToolScope, userId: string, minStars: number) {
+function scopeClause(scope: ToolScope, userId: string | null, minStars: number) {
   if (scope === 'user') {
+    if (!userId) return null;
     return {
       join: 'JOIN user_repos ur ON ur.repo_id = r.id',
       where: 'ur.user_id = ? AND (ur.is_starred = 1 OR ur.is_saved = 1)',
@@ -22,6 +23,15 @@ function scopeClause(scope: ToolScope, userId: string, minStars: number) {
   }
 
   if (scope === 'all') {
+    if (!userId) {
+      return {
+        join: '',
+        where: 'r.stargazers_count >= ?',
+        joinArgs: [] as InValue[],
+        whereArgs: [minStars] as InValue[],
+      };
+    }
+
     return {
       join: 'LEFT JOIN user_repos ur ON ur.repo_id = r.id AND ur.user_id = ?',
       where: '(r.stargazers_count >= ? OR ur.user_id IS NOT NULL)',
@@ -40,10 +50,6 @@ function scopeClause(scope: ToolScope, userId: string, minStars: number) {
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.githubId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const params = request.nextUrl.searchParams;
   const scope = parseScope(params.get('scope'));
   const minConfidence = Math.min(
@@ -53,7 +59,11 @@ export async function GET(request: NextRequest) {
   const minStars = Math.max(parseInt(params.get('min_stars') || '10000', 10) || 10000, 0);
   const limit = Math.min(Math.max(parseInt(params.get('limit') || '80', 10) || 80, 1), 200);
   const tool = params.get('tool')?.trim() || null;
-  const scopeSql = scopeClause(scope, session.user.githubId, minStars);
+  const scopeSql = scopeClause(scope, session?.user?.githubId ?? null, minStars);
+
+  if (!scopeSql) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   if (tool) {
     const result = await db.execute({

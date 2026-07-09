@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const SITE_URL = 'https://starboard.sarthakagrawal927.workers.dev';
+const SITE_URL = 'https://starboard.codevetter.com';
 const SITE_DESCRIPTION =
   'Sync, search, and organize your GitHub stars. Filter by language, find similar repos with semantic search, and group everything into collections.';
 

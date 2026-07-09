@@ -2,9 +2,8 @@
 
 import { ArrowUpRight, Info, Loader2, Search, ShieldCheck, Wrench } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 
 import { Badge } from '@/components/ui/badge';
@@ -77,11 +76,6 @@ function confidenceClass(value: number): string {
 
 export default function ToolsPage() {
   const { status } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/');
-  }, [router, status]);
 
   if (status === 'loading') {
     return (
@@ -91,12 +85,10 @@ export default function ToolsPage() {
     );
   }
 
-  if (status === 'unauthenticated') return null;
-
-  return <ToolsContent />;
+  return <ToolsContent isAuthenticated={status === 'authenticated'} />;
 }
 
-function ToolsContent() {
+function ToolsContent({ isAuthenticated }: { isAuthenticated: boolean }) {
   const [scope, setScope] = useState<ToolScope>('discover');
   const [minConfidence, setMinConfidence] = useState(0);
   const [query, setQuery] = useState('');
@@ -169,6 +161,7 @@ function ToolsContent() {
                 key={value}
                 variant={scope === value ? 'default' : 'outline'}
                 size="sm"
+                disabled={value === 'user' && !isAuthenticated}
                 onClick={() => {
                   setScope(value);
                   setSelectedTool(null);

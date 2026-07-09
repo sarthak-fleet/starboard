@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const siteUrl = 'https://starboard.workers.dev';
+const siteUrl = 'https://starboard.codevetter.com';
 
 export default function robots(): MetadataRoute.Robots {
   return {

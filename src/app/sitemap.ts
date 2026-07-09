@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export const dynamic = 'force-static';
 
-const siteUrl = 'https://starboard.workers.dev';
+const siteUrl = 'https://starboard.codevetter.com';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
