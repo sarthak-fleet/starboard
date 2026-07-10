@@ -86,6 +86,7 @@ describe('weekly alerts', () => {
         lanes: ['release'],
         weeklyDigest: true,
         inAppNotifications: true,
+        emailOptOut: false,
         momentumMinDelta: 100,
         dormantDays: 365,
       },

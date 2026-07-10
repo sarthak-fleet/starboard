@@ -140,25 +140,47 @@ function buildThresholdEventStatements(
 
 async function ghSearch(q: string, page: number, token: string): Promise<GhSearchResponse> {
   const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=${PER_PAGE}&page=${page}`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'starboard-seed-bot',
-    },
-  });
-  if (res.status === 403 || res.status === 429) {
-    const reset = res.headers.get('x-ratelimit-reset');
-    const waitMs = reset ? parseInt(reset, 10) * 1000 - Date.now() : 60_000;
-    console.warn(`Rate limited. Sleeping ${Math.round(waitMs / 1000)}s...`);
-    await new Promise((r) => setTimeout(r, Math.max(waitMs, 1000)));
-    return ghSearch(q, page, token);
+  const maxAttempts = 4;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'starboard-seed-bot',
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      const waitMs = 2 ** (attempt - 1) * 1000;
+      console.warn(`GitHub search request failed. Retrying in ${waitMs / 1000}s...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+
+    if (res.status >= 500 && attempt < maxAttempts) {
+      const waitMs = 2 ** (attempt - 1) * 1000;
+      console.warn(`GitHub search returned ${res.status}. Retrying in ${waitMs / 1000}s...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+
+    if (res.status === 403 || res.status === 429) {
+      const reset = res.headers.get('x-ratelimit-reset');
+      const waitMs = reset ? parseInt(reset, 10) * 1000 - Date.now() : 60_000;
+      console.warn(`Rate limited. Sleeping ${Math.round(waitMs / 1000)}s...`);
+      await new Promise((r) => setTimeout(r, Math.max(waitMs, 1000)));
+      return ghSearch(q, page, token);
+    }
+    if (!res.ok) {
+      throw new Error(`GH search failed: ${res.status} ${await res.text()}`);
+    }
+    return res.json();
   }
-  if (!res.ok) {
-    throw new Error(`GH search failed: ${res.status} ${await res.text()}`);
-  }
-  return res.json();
+  throw new Error(`GH search request failed after ${maxAttempts} attempts: ${String(lastError)}`);
 }
 
 async function upsertRepos(db: Client, repos: GhRepo[]): Promise<number[]> {

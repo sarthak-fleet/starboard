@@ -1,6 +1,6 @@
 # starboard — PROJECT STATUS
 
-Last updated: 2026-07-09
+Last updated: 2026-07-11
 
 ## Why/What
 
@@ -55,6 +55,7 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 
 ## Timeline
 
+- **2026-07-11** — Scheduled seed reliability: GitHub search now retries transient network and 5xx failures with bounded exponential backoff, while alert preference fixtures include the current email opt-out default.
 - **2026-07-02** — Added global try/catch error handler to OpenNext worker (`worker.mjs`).
 
 | Phase | Milestone |
