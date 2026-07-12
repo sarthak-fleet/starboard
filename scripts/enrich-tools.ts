@@ -41,6 +41,10 @@ interface PendingRepo {
   stargazers_count: number;
   repo_updated_at: string | null;
   existing_source_hash: string | null;
+  ai_summary: string | null;
+  ai_subcategories: string | null;
+  ai_use_cases: string | null;
+  ai_keywords: string | null;
 }
 
 interface GitHubRepo {
@@ -80,6 +84,10 @@ function repoSourceHash(repo: PendingRepo): string {
         updated: repo.repo_updated_at,
         topics: repo.topics,
         stars: repo.stargazers_count,
+        aiSummary: repo.ai_summary,
+        aiSubcategories: repo.ai_subcategories,
+        aiUseCases: repo.ai_use_cases,
+        aiKeywords: repo.ai_keywords,
       })
     )
     .digest('hex');
@@ -116,9 +124,14 @@ async function loadPending(db: Client): Promise<PendingRepo[]> {
                  r.topics,
                  r.stargazers_count,
                  r.repo_updated_at,
-                 state.source_hash AS existing_source_hash
+                 state.source_hash AS existing_source_hash,
+                 ram.summary AS ai_summary,
+                 ram.subcategories AS ai_subcategories,
+                 ram.use_cases AS ai_use_cases,
+                 ram.keywords AS ai_keywords
           FROM repos r
           LEFT JOIN repo_tool_enrichment_state state ON state.repo_id = r.id
+          LEFT JOIN repo_ai_metadata ram ON ram.repo_id = r.id
           WHERE r.stargazers_count >= ?
              OR EXISTS (
                   SELECT 1 FROM user_repos ur
@@ -143,6 +156,10 @@ async function loadPending(db: Client): Promise<PendingRepo[]> {
       stargazers_count: row.stargazers_count as number,
       repo_updated_at: row.repo_updated_at as string | null,
       existing_source_hash: row.existing_source_hash as string | null,
+      ai_summary: row.ai_summary as string | null,
+      ai_subcategories: row.ai_subcategories as string | null,
+      ai_use_cases: row.ai_use_cases as string | null,
+      ai_keywords: row.ai_keywords as string | null,
     };
     if (repo.existing_source_hash !== repoSourceHash(repo)) pending.push(repo);
     if (pending.length >= LIMIT) break;
@@ -239,6 +256,10 @@ async function enrichRepo(db: Client, repo: PendingRepo) {
     language: repo.language,
     topics: repo.topics,
     description: repo.description,
+    aiKeywords: repo.ai_keywords,
+    aiMetadataText: [repo.ai_summary, repo.ai_subcategories, repo.ai_use_cases]
+      .filter(Boolean)
+      .join('\n'),
   });
 
   const sbomTools = await fetchSbomTools(repo).catch((error) => {

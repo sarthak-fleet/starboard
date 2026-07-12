@@ -9,6 +9,20 @@ import { blendSearchIds, expandedSearchQuery, ftsSearchQuery } from '@/lib/searc
 const MIN_STARS_FLOOR = 5000;
 const ELIGIBLE_REPO_SQL =
   '(r.stargazers_count >= ? OR EXISTS (SELECT 1 FROM user_repos community_ur WHERE community_ur.repo_id = r.id AND community_ur.is_starred = 1))';
+const STAR_GROWTH_30D_SQL = `CASE
+  WHEN (SELECT COUNT(*) FROM repo_star_snapshots count_snapshots
+        WHERE count_snapshots.repo_id = r.id
+          AND count_snapshots.captured_at >= datetime('now', '-30 days')) >= 2
+  THEN
+    (SELECT latest.stargazers_count FROM repo_star_snapshots latest
+     WHERE latest.repo_id = r.id AND latest.captured_at >= datetime('now', '-30 days')
+     ORDER BY latest.captured_at DESC LIMIT 1)
+    -
+    (SELECT earliest.stargazers_count FROM repo_star_snapshots earliest
+     WHERE earliest.repo_id = r.id AND earliest.captured_at >= datetime('now', '-30 days')
+     ORDER BY earliest.captured_at ASC LIMIT 1)
+  ELSE NULL
+END`;
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -22,6 +36,12 @@ export async function GET(request: NextRequest) {
 
   const q = params.get('q')?.trim() || null;
   const languages = params.get('language')?.split(',').filter(Boolean) || [];
+  const toolKeys =
+    params
+      .get('tool')
+      ?.split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => /^[a-z0-9][a-z0-9-]{0,63}$/.test(value)) || [];
   const listId = params.get('list_id');
   const sort = params.get('sort') || 'stars';
   const limit = Math.min(Math.max(parseInt(params.get('limit') || '50', 10) || 50, 1), 200);
@@ -111,6 +131,16 @@ export async function GET(request: NextRequest) {
     whereArgs.push(...languages);
   }
 
+  if (toolKeys.length > 0) {
+    const placeholders = toolKeys.map(() => '?').join(', ');
+    whereClauses.push(
+      `EXISTS (SELECT 1 FROM repo_tools selected_tools
+               WHERE selected_tools.repo_id = r.id
+                 AND selected_tools.tool_key IN (${placeholders}))`
+    );
+    whereArgs.push(...toolKeys);
+  }
+
   if (listId !== null) {
     const parsedListId = parseInt(listId, 10);
     if (!Number.isInteger(parsedListId)) {
@@ -131,6 +161,7 @@ export async function GET(request: NextRequest) {
     updated: 'r.repo_updated_at DESC, r.stargazers_count DESC',
     name: 'r.name ASC',
     starred: 'r.stargazers_count DESC',
+    growth: 'star_growth_30d DESC, r.stargazers_count DESC',
   };
   let orderBy: string;
   if (useRankedOrder) {
@@ -143,6 +174,7 @@ export async function GET(request: NextRequest) {
   try {
     const mainQuery: InStatement = {
       sql: `SELECT r.*,
+                   ${STAR_GROWTH_30D_SQL} AS star_growth_30d,
                    ur.list_id,
                    ur.notes,
                    ur.starred_at,
@@ -189,12 +221,23 @@ export async function GET(request: NextRequest) {
       args: [MIN_STARS_FLOOR, userId],
     };
 
+    const toolFacetQuery: InStatement = {
+      sql: `SELECT rt.tool_key, rt.tool_name, COUNT(DISTINCT rt.repo_id) AS count
+            FROM repo_tools rt
+            JOIN repos r ON r.id = rt.repo_id
+            WHERE ${ELIGIBLE_REPO_SQL}
+            GROUP BY rt.tool_key, rt.tool_name
+            ORDER BY count DESC, rt.tool_name ASC
+            LIMIT 40`,
+      args: [MIN_STARS_FLOOR],
+    };
+
     const [mainResult, batchResults] = await Promise.all([
       db.execute(mainQuery),
-      db.batch([countQuery, languageFacetQuery, listFacetQuery]),
+      db.batch([countQuery, languageFacetQuery, listFacetQuery, toolFacetQuery]),
     ]);
 
-    const [countResult, langResult, listResult] = batchResults;
+    const [countResult, langResult, listResult, toolResult] = batchResults;
 
     const repos = mainResult.rows.map((row) => ({
       id: row.id as number,
@@ -219,6 +262,10 @@ export async function GET(request: NextRequest) {
       starred_at: row.starred_at as string | null,
       is_starred: Boolean(row.is_starred),
       is_saved: Boolean(row.is_saved),
+      star_growth_30d:
+        row.star_growth_30d === null || row.star_growth_30d === undefined
+          ? null
+          : Number(row.star_growth_30d),
     }));
 
     const languages = langResult.rows.map((r) => [r.language as string, r.count as number]);
@@ -228,11 +275,16 @@ export async function GET(request: NextRequest) {
       color: r.color as string,
       count: r.count as number,
     }));
+    const tools = toolResult.rows.map((r) => ({
+      key: r.tool_key as string,
+      name: r.tool_name as string,
+      count: Number(r.count),
+    }));
 
     return NextResponse.json({
       repos,
       total: countResult.rows[0]?.total ?? 0,
-      facets: { languages, lists, tags: [] },
+      facets: { languages, lists, tags: [], tools },
       minStars: MIN_STARS_FLOOR,
     });
   } catch (error) {

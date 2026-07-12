@@ -14,7 +14,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDiscoverRepos } from '@/hooks/use-discover-repos';
 import { useLists } from '@/hooks/use-lists';
 
-const sortOptions = ['relevance', 'most-stars', 'recently-updated', 'name-az'] as const;
+const sortOptions = [
+  'relevance',
+  'most-stars',
+  'fastest-growing',
+  'recently-updated',
+  'name-az',
+] as const;
 
 function PageSkeleton() {
   return (
@@ -109,6 +115,10 @@ function DiscoverContent() {
     'lang',
     parseAsArrayOf(parseAsString, ',').withDefault([])
   );
+  const [selectedTools, setSelectedTools] = useQueryState(
+    'tool',
+    parseAsArrayOf(parseAsString, ',').withDefault([])
+  );
   const [selectedListId, setSelectedListId] = useQueryState('list', {
     parse: (v) => (v ? parseInt(v, 10) : null),
     serialize: (v) => (v != null ? String(v) : ''),
@@ -139,6 +149,7 @@ function DiscoverContent() {
     q: debouncedSearch,
     language: selectedLanguages,
     listId: selectedListId,
+    tools: selectedTools,
     sort: sortBy,
     limit: 50,
   });
@@ -153,6 +164,7 @@ function DiscoverContent() {
   const requestKey = [
     debouncedSearch,
     selectedLanguages.join(','),
+    selectedTools.join(','),
     selectedListId ?? '',
     sortBy,
   ].join('|');
@@ -170,15 +182,19 @@ function DiscoverContent() {
     (reposLoading || listsLoading) && lists.length === 0 && facets.languages.length === 0;
 
   const hasActiveFilters =
-    searchQuery.trim().length > 0 || selectedLanguages.length > 0 || selectedListId !== null;
+    searchQuery.trim().length > 0 ||
+    selectedLanguages.length > 0 ||
+    selectedTools.length > 0 ||
+    selectedListId !== null;
   const isGridPending =
     searchQuery !== debouncedSearch || requestKey !== settledRequestKey || isValidating;
 
   const clearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedLanguages([]);
+    setSelectedTools([]);
     setSelectedListId(null);
-  }, [setSearchQuery, setSelectedLanguages, setSelectedListId]);
+  }, [setSearchQuery, setSelectedLanguages, setSelectedTools, setSelectedListId]);
 
   const handleLanguageToggle = useCallback(
     (language: string) => {
@@ -189,6 +205,17 @@ function DiscoverContent() {
       );
     },
     [setSelectedLanguages]
+  );
+
+  const handleToolToggle = useCallback(
+    (toolKey: string) => {
+      setSelectedTools((previous) =>
+        (previous ?? []).includes(toolKey)
+          ? (previous ?? []).filter((key) => key !== toolKey)
+          : [...(previous ?? []), toolKey]
+      );
+    },
+    [setSelectedTools]
   );
 
   const handleAssignList = useCallback(
@@ -237,6 +264,9 @@ function DiscoverContent() {
       isLoading={showSidebarSkeleton}
       selectedLanguages={selectedLanguages}
       onLanguageToggle={handleLanguageToggle}
+      toolFacets={facets.tools}
+      selectedTools={selectedTools}
+      onToolToggle={handleToolToggle}
       lists={lists}
       selectedListId={selectedListId}
       onListSelect={setSelectedListId}
@@ -271,7 +301,7 @@ function DiscoverContent() {
           <SheetContent side="left" className="w-[280px] p-0">
             <SheetTitle className="sr-only">Filters</SheetTitle>
             <SheetDescription className="sr-only">
-              Filter seeded repositories by language and collection.
+              Filter seeded repositories by language, detected tool, and collection.
             </SheetDescription>
             {sidebarContent}
           </SheetContent>

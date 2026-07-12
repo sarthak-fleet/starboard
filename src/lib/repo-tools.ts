@@ -30,6 +30,8 @@ export interface RepoSignalSource {
   topics?: string[] | string | null;
   description?: string | null;
   aiKeywords?: string[] | string | null;
+  aiMetadataText?: string | null;
+  readmeText?: string | null;
 }
 
 export const TOOL_ACCURACY_DISCLAIMER =
@@ -288,13 +290,21 @@ export function detectToolsFromRepoSignals(source: RepoSignalSource): ToolDetect
   }
 
   const description = source.description?.toLowerCase() ?? '';
-  for (const definition of toolDefinitions) {
-    if (
-      definition.aliases.some(
-        (alias) => alias.length > 3 && description.includes(alias.toLowerCase())
-      )
-    ) {
-      detections.push(detection(definition, 35, 'description'));
+  const inferredTextSources = [
+    { text: description, confidence: 35, source: 'description' },
+    { text: source.aiMetadataText?.toLowerCase() ?? '', confidence: 45, source: 'ai-metadata' },
+    { text: source.readmeText?.toLowerCase() ?? '', confidence: 40, source: 'cached-readme' },
+  ];
+  for (const inferred of inferredTextSources) {
+    if (!inferred.text) continue;
+    for (const definition of toolDefinitions) {
+      if (
+        definition.aliases.some(
+          (alias) => alias.length > 3 && inferred.text.includes(alias.toLowerCase())
+        )
+      ) {
+        detections.push(detection(definition, inferred.confidence, inferred.source));
+      }
     }
   }
 

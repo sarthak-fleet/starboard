@@ -38,6 +38,7 @@ const sortLabels: Record<SortOption, string> = {
   relevance: 'Relevance',
   'recently-starred': 'Recently Starred',
   'most-stars': 'Stars',
+  'fastest-growing': 'Fastest Growing',
   'recently-updated': 'Last Updated',
   'name-az': 'Name A-Z',
 };

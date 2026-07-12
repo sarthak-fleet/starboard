@@ -7,6 +7,7 @@ export type SortOption =
   | 'relevance'
   | 'recently-starred'
   | 'most-stars'
+  | 'fastest-growing'
   | 'recently-updated'
   | 'name-az';
 
@@ -15,6 +16,7 @@ const sortMap: Record<SortOption, string> = {
   relevance: 'relevance',
   'recently-starred': 'starred',
   'most-stars': 'stars',
+  'fastest-growing': 'growth',
   'recently-updated': 'updated',
   'name-az': 'name',
 };
@@ -39,6 +41,7 @@ export interface UserRepo {
   starred_at: string | null;
   is_starred?: boolean;
   is_saved?: boolean;
+  star_growth_30d?: number | null;
 }
 
 export interface Facets {

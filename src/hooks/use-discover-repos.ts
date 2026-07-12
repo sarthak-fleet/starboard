@@ -9,14 +9,19 @@ const sortMap: Record<SortOption, string> = {
   relevance: 'relevance',
   'recently-starred': 'stars',
   'most-stars': 'stars',
+  'fastest-growing': 'growth',
   'recently-updated': 'updated',
   'name-az': 'name',
 };
 
+interface DiscoverFacets extends Facets {
+  tools: Array<{ key: string; name: string; count: number }>;
+}
+
 interface DiscoverResponse {
   repos: UserRepo[];
   total: number;
-  facets: Facets;
+  facets: DiscoverFacets;
   minStars: number;
 }
 
@@ -24,14 +29,16 @@ export interface UseDiscoverReposOptions {
   q?: string;
   language?: string[];
   listId?: number | null;
+  tools?: string[];
   sort?: SortOption;
   limit?: number;
 }
 
-const EMPTY_FACETS: Facets = {
+const EMPTY_FACETS: DiscoverFacets = {
   languages: [],
   lists: [],
   tags: [],
+  tools: [],
 };
 
 function buildDiscoverUrl(opts: UseDiscoverReposOptions, offset: number): string {
@@ -39,6 +46,7 @@ function buildDiscoverUrl(opts: UseDiscoverReposOptions, offset: number): string
   if (opts.q) params.set('q', opts.q);
   if (opts.language?.length) params.set('language', opts.language.join(','));
   if (opts.listId != null) params.set('list_id', String(opts.listId));
+  if (opts.tools?.length) params.set('tool', opts.tools.join(','));
   const apiSort = sortMap[opts.sort ?? 'most-stars'];
   if (apiSort !== 'stars') params.set('sort', apiSort);
   const limit = opts.limit ?? 50;
@@ -53,6 +61,7 @@ function filterKey(opts: UseDiscoverReposOptions): string {
     q: opts.q ?? '',
     lang: opts.language ?? [],
     list: opts.listId ?? null,
+    tools: opts.tools ?? [],
     sort: opts.sort ?? 'most-stars',
   });
 }

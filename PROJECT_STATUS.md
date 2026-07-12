@@ -1,6 +1,6 @@
 # starboard — PROJECT STATUS
 
-Last updated: 2026-07-11
+Last updated: 2026-07-13
 
 ## Why/What
 
@@ -55,6 +55,7 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 
 ## Timeline
 
+- **2026-07-13** — Completed Star History + Tool Intelligence: Discover now supports stored 30-day growth ordering and detected-tool facets, tool enrichment reuses persisted AI/README-derived metadata before GitHub manifest requests, and the 5k+ seed walk has a hard per-run page bound with conflict-safe snapshot inserts and resumable cursors. Added route-level coverage for growth/tool queries and excluded linked fleet agent assets from Vitest discovery; 94 tests, typecheck, lint, and production build pass.
 - **2026-07-11** — Scheduled seed reliability: GitHub search now retries transient network and 5xx failures with bounded exponential backoff, while alert preference fixtures include the current email opt-out default.
 - **2026-07-02** — Added global try/catch error handler to OpenNext worker (`worker.mjs`).
 
@@ -115,6 +116,7 @@ Star sync (ETag + HTML scrape for star lists) ──► Turso (users, repos, use
 
 ### Discovery, radar, and intelligence surfaces
 - Discover page and `/api/discover` for seeded popular repositories.
+- Discover supports paginated 30-day growth ordering and detected-tool facets from indexed local snapshot/tool tables.
 - Scheduled GitHub Actions seed/enrich/embed popular repos in Turso (`scripts/seed-popular.ts`, `pnpm db:seed-popular`).
 - Radar page and `/api/radar` for maintainer/release-oriented signals.
 - Star history and fastest-grower APIs/surfaces: `/api/repos/[repoId]/star-history`, `/api/growth`, Radar fastest-growers, and repo-detail mini history from stored `repo_star_snapshots`.

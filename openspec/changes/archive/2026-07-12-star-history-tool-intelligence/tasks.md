@@ -9,11 +9,11 @@
 
 ## 2. Scheduled Collection
 
-- [ ] 2.1 Update the seeded repo path so 5k+ corpus snapshots remain conflict-safe and bounded.
+- [x] 2.1 Update the seeded repo path so 5k+ corpus snapshots remain conflict-safe and bounded.
 - [x] 2.2 Add recursive tree discovery so enrichment fetches only relevant manifests/build files instead of cloning repositories.
 - [x] 2.3 Add a capped tool-enrichment script that prioritizes saved/starred repos and high-star seeded repos.
 - [x] 2.4 Try GitHub SBOM export when available, then fall back to tree-discovered manifest fetches.
-- [ ] 2.5 Reuse existing README/RAG metadata when available before making GitHub manifest requests.
+- [x] 2.5 Reuse existing README/RAG metadata when available before making GitHub manifest requests.
 - [x] 2.6 Add logging for processed, skipped, stale, failed, and rate-limited tool-enrichment rows.
 
 ## 3. Read APIs
@@ -23,7 +23,7 @@
 - [x] 3.3 Add a read-only API for aggregate tool usage and tool drill-down.
 - [x] 3.4 Add confidence/source filters to tool usage APIs.
 - [x] 3.5 Return stable tool reference links and larger bounded repository drill-downs from tool APIs.
-- [ ] 3.6 Extend Discover API support for `growth` sorting and tool facets when data exists.
+- [x] 3.6 Extend Discover API support for `growth` sorting and tool facets when data exists.
 
 ## 4. UI Surfaces
 
@@ -38,6 +38,6 @@
 ## 5. Verification And Rollout
 
 - [x] 5.1 Run focused Vitest coverage for growth and tool detection modules.
-- [ ] 5.2 Run route-level or integration checks for new read APIs.
+- [x] 5.2 Run route-level or integration checks for new read APIs.
 - [x] 5.3 Run `pnpm typecheck` and the smallest relevant build check after UI wiring.
-- [ ] 5.4 Archive this OpenSpec change after the remaining follow-up tasks are complete.
+- [x] 5.4 Archive this OpenSpec change after the remaining follow-up tasks are complete.

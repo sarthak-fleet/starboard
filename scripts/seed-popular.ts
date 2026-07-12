@@ -20,6 +20,7 @@
  *   GITHUB_TOKEN          — fine-grained PAT, public_repo:read
  * Optional env:
  *   SEED_DAILY_LIMIT      — embeddings per run, default 1000
+ *   SEED_METADATA_PAGE_LIMIT — GitHub search pages per run, default 120 (hard cap 250)
  *   MIN_STARS_FLOOR       — minimum stars to seed, default 5000
  *   STAR_THRESHOLDS       — comma-separated digest thresholds, default 5000,10000,20000,50000,100000
  */
@@ -29,6 +30,8 @@ import { type Client, createClient, type InStatement } from '@libsql/client';
 import { buildRepoEmbeddingText, generateEmbeddings, textHash } from '../src/lib/embeddings';
 
 const DAILY_LIMIT = parseInt(process.env.SEED_DAILY_LIMIT || '1000', 10);
+const REQUESTED_METADATA_PAGE_LIMIT = parseInt(process.env.SEED_METADATA_PAGE_LIMIT || '120', 10);
+const METADATA_PAGE_LIMIT = Math.min(Math.max(REQUESTED_METADATA_PAGE_LIMIT || 0, 1), 250);
 const MIN_STARS_FLOOR = parseInt(process.env.MIN_STARS_FLOOR || '5000', 10);
 const STAR_THRESHOLDS = (process.env.STAR_THRESHOLDS || '5000,10000,20000,50000,100000')
   .split(',')
@@ -222,7 +225,7 @@ async function upsertRepos(db: Client, repos: GhRepo[]): Promise<number[]> {
     ],
   }));
   const snapshotStmts: InStatement[] = repos.map((repo) => ({
-    sql: `INSERT INTO repo_star_snapshots (repo_id, stargazers_count)
+    sql: `INSERT OR IGNORE INTO repo_star_snapshots (repo_id, stargazers_count)
           VALUES (?, ?)`,
     args: [repo.id, repo.stargazers_count],
   }));
@@ -338,11 +341,13 @@ async function walkAndUpsert(db: Client, ghToken: string) {
   let page = cursor.next_page;
   let lowestSeenInBucket = max_stars;
   let upsertedThisRun = 0;
+  let pagesProcessed = 0;
 
-  while (max_stars >= MIN_STARS_FLOOR) {
+  while (max_stars >= MIN_STARS_FLOOR && pagesProcessed < METADATA_PAGE_LIMIT) {
     const q = `stars:${MIN_STARS_FLOOR}..${max_stars}`;
     console.info(`[walk] q="${q}" page=${page}`);
     const result = await ghSearch(q, page, ghToken);
+    pagesProcessed += 1;
 
     if (result.items.length === 0) {
       if (page === 1) break;
@@ -351,6 +356,7 @@ async function walkAndUpsert(db: Client, ghToken: string) {
       max_stars = newMax;
       page = 1;
       lowestSeenInBucket = newMax;
+      await saveCursor(db, max_stars, page);
       continue;
     }
 
@@ -371,10 +377,19 @@ async function walkAndUpsert(db: Client, ghToken: string) {
     await new Promise((r) => setTimeout(r, 2100));
   }
 
+  if (pagesProcessed >= METADATA_PAGE_LIMIT && max_stars >= MIN_STARS_FLOOR) {
+    console.info(
+      `[walk] paused after bounded ${pagesProcessed}-page run. upserted ${upsertedThisRun} repo rows; cursor preserved at max_stars=${max_stars} page=${page}.`
+    );
+    return;
+  }
+
   // Walk complete. Reset cursor so the next run rediscovers from the top —
   // catches new ≥5k repos and refreshes star counts on existing rows.
   await saveCursor(db, 999999999, 1);
-  console.info(`[walk] complete. upserted ${upsertedThisRun} repo rows. cursor reset.`);
+  console.info(
+    `[walk] complete after ${pagesProcessed} pages. upserted ${upsertedThisRun} repo rows. cursor reset.`
+  );
 }
 
 async function main() {

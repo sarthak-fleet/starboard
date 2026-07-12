@@ -406,7 +406,9 @@ function StarsContent() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={(sort) => {
+          if (sort !== 'fastest-growing') setSortBy(sort);
+        }}
         sortOptions={sortOptions}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

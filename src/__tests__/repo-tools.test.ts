@@ -69,6 +69,20 @@ describe('repo tool detection', () => {
     expect(result.find((tool) => tool.toolKey === 'langchain')?.confidence).toBeLessThan(60);
   });
 
+  it('reuses stored AI and README-derived metadata before network enrichment', () => {
+    const result = detectToolsFromRepoSignals({
+      aiKeywords: ['vitest'],
+      aiMetadataText: 'A Next.js workspace deployed with Wrangler',
+      readmeText: 'Built with React and Tailwind CSS',
+    });
+
+    expect(keys(result)).toEqual(
+      expect.arrayContaining(['vitest', 'next', 'cloudflare-workers', 'react', 'tailwind'])
+    );
+    expect(result.find((tool) => tool.toolKey === 'next')?.sources).toContain('ai-metadata');
+    expect(result.find((tool) => tool.toolKey === 'react')?.sources).toContain('cached-readme');
+  });
+
   it('recognizes relevant manifests and skips bulky generated paths', () => {
     expect(isPotentialToolManifest('packages/app/package.json')).toBe(true);
     expect(isPotentialToolManifest('src/native/CMakeLists.txt')).toBe(true);

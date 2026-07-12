@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Code2, Link, List, Plus, Share2, Trash2 } from 'lucide-react';
+import { Check, Code2, Link, List, Plus, Share2, Trash2, Wrench } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,9 @@ interface SidebarProps {
   isLoading?: boolean;
   selectedLanguages: string[];
   onLanguageToggle: (language: string) => void;
+  toolFacets?: Array<{ key: string; name: string; count: number }>;
+  selectedTools?: string[];
+  onToolToggle?: (toolKey: string) => void;
   lists: UserList[];
   selectedListId: number | null;
   onListSelect: (id: number | null) => void;
@@ -90,6 +93,9 @@ export function Sidebar({
   isLoading,
   selectedLanguages,
   onLanguageToggle,
+  toolFacets = [],
+  selectedTools = [],
+  onToolToggle,
   lists,
   selectedListId,
   onListSelect,
@@ -186,6 +192,29 @@ export function Sidebar({
           </div>
 
           <Separator className="my-3" />
+
+          {toolFacets.length > 0 && onToolToggle && (
+            <>
+              <SectionHeader icon={Wrench} label="Tools" />
+              <div className="mt-1 flex flex-col gap-0.5">
+                {toolFacets.slice(0, 15).map((tool) => (
+                  <label
+                    key={tool.key}
+                    className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                  >
+                    <Checkbox
+                      checked={selectedTools.includes(tool.key)}
+                      onCheckedChange={() => onToolToggle(tool.key)}
+                      className="size-3.5"
+                    />
+                    <span className="flex-1 truncate">{tool.name}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{tool.count}</span>
+                  </label>
+                ))}
+              </div>
+              <Separator className="my-3" />
+            </>
+          )}
 
           {/* Collections */}
           <div className="flex items-center justify-between">
