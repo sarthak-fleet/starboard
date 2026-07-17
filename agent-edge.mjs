@@ -1,52 +1,78 @@
 /**
- * Portable agent-edge handler — copy or generate into each product.
+ * Portable agent-edge handler (fleet GEO standard).
  * Spec: fleet-ops/docs/agent-indexing-standard.md
- *
- * Usage in worker.mjs (before openNext.fetch):
- *   import { handleAgentEdge } from './agent-edge.mjs'
- *   const agent = handleAgentEdge(request)
- *   if (agent) return agent
  */
 
-/** @type {{ name: string, url: string, llmsTxt: string, indexMd: string, catalog: object, llmsFull?: string | null }} */
 export const AGENT_SURFACE = {
-  "name": "Starboard",
-  "url": "https://starboard.codevetter.com",
-  "llmsTxt": "# Starboard\n\n> GitHub stars organizer with semantic search — sub-product of CodeVetter for repo intelligence.\n\n## Product\n\n- [Home](https://starboard.codevetter.com/): Product\n- [CodeVetter](https://codevetter.com/): Parent product\n\n## Machine surfaces\n\n- [Agent catalog](https://starboard.codevetter.com/api/ai): JSON inventory of public surfaces\n- [Homepage markdown](https://starboard.codevetter.com/index.md): Product brief without JS\n- [This index](https://starboard.codevetter.com/llms.txt)\n\n## Optional\n\n- [Foundry](https://sassmaker.com): Parent fleet showcase\n",
-  "indexMd": "# Starboard\n\nGitHub stars organizer + semantic search (CodeVetter sub-product).\n\n## What it is\n\n- Organize and search starred repositories\n- Semantic search over star metadata\n\n## Agent entrypoints\n\n- https://starboard.codevetter.com/llms.txt\n- https://starboard.codevetter.com/api/ai\n- https://starboard.codevetter.com/index.md\n",
-  "catalog": {
-    "name": "Starboard",
-    "version": "1",
-    "url": "https://starboard.codevetter.com",
-    "llms": "https://starboard.codevetter.com/llms.txt",
-    "llmsFull": null,
-    "sitemap": "https://starboard.codevetter.com/sitemap.xml",
-    "markdown": {
-      "suffix": ".md",
-      "negotiation": true
+  name: 'Starboard',
+  url: 'https://starboard.codevetter.com',
+  llmsTxt:
+    '# Starboard\n' +
+    '\n' +
+    '> GitHub stars organizer with semantic search — sub-product of CodeVetter for repo intelligence.\n' +
+    '\n' +
+    '## Product\n' +
+    '\n' +
+    '- [Home](https://starboard.codevetter.com/): Product\n' +
+    '- [CodeVetter](https://codevetter.com/): Parent product\n' +
+    '\n' +
+    '## Machine surfaces\n' +
+    '\n' +
+    '- [Agent catalog](https://starboard.codevetter.com/api/ai): JSON inventory of public surfaces\n' +
+    '- [Homepage markdown](https://starboard.codevetter.com/index.md): Product brief without JS\n' +
+    '- [This index](https://starboard.codevetter.com/llms.txt)\n' +
+    '\n' +
+    '## Optional\n' +
+    '\n' +
+    '- [Foundry](https://sassmaker.com): Parent fleet showcase\n',
+  indexMd:
+    '# Starboard\n' +
+    '\n' +
+    'GitHub stars organizer + semantic search (CodeVetter sub-product).\n' +
+    '\n' +
+    '## What it is\n' +
+    '\n' +
+    '- Organize and search starred repositories\n' +
+    '- Semantic search over star metadata\n' +
+    '\n' +
+    '## Agent entrypoints\n' +
+    '\n' +
+    '- https://starboard.codevetter.com/llms.txt\n' +
+    '- https://starboard.codevetter.com/api/ai\n' +
+    '- https://starboard.codevetter.com/index.md\n',
+  catalog: {
+    name: 'Starboard',
+    version: '1',
+    url: 'https://starboard.codevetter.com',
+    llms: 'https://starboard.codevetter.com/llms.txt',
+    llmsFull: null,
+    sitemap: 'https://starboard.codevetter.com/sitemap.xml',
+    markdown: {
+      suffix: '.md',
+      negotiation: true,
     },
-    "surfaces": [
+    surfaces: [
       {
-        "id": "home",
-        "url": "https://starboard.codevetter.com/",
-        "md": "https://starboard.codevetter.com/index.md",
-        "kind": "static",
-        "description": "Product home"
+        id: 'home',
+        url: 'https://starboard.codevetter.com/',
+        md: 'https://starboard.codevetter.com/index.md',
+        kind: 'static',
+        description: 'Product home',
       },
       {
-        "id": "codevetter",
-        "url": "https://codevetter.com/",
-        "md": null,
-        "kind": "static",
-        "description": "Parent product"
-      }
+        id: 'codevetter',
+        url: 'https://codevetter.com/',
+        md: null,
+        kind: 'static',
+        description: 'Parent product',
+      },
     ],
-    "auth": {
-      "public": true,
-      "notes": "Auth-walled app routes are not agent-indexed unless listed here."
-    }
+    auth: {
+      public: true,
+      notes: 'Auth-walled app routes are not agent-indexed unless listed here.',
+    },
   },
-  "llmsFull": null
+  llmsFull: null,
 };
 
 /**
@@ -59,6 +85,7 @@ export function handleAgentEdge(request) {
   const path = url.pathname === '' ? '/' : url.pathname;
 
   if (path === '/llms.txt') {
+    if (AGENT_SURFACE.skipLlms) return null;
     return text(AGENT_SURFACE.llmsTxt, 'text/plain; charset=utf-8');
   }
   if (path === '/llms-full.txt' && AGENT_SURFACE.llmsFull) {
@@ -68,7 +95,6 @@ export function handleAgentEdge(request) {
     return text(AGENT_SURFACE.indexMd, 'text/markdown; charset=utf-8');
   }
   if (path === '/api/ai') {
-    // Re-bind origin so preview/custom domains stay correct
     const catalog = {
       ...AGENT_SURFACE.catalog,
       url: url.origin,
@@ -85,7 +111,6 @@ export function handleAgentEdge(request) {
     return json(catalog);
   }
 
-  // Homepage markdown negotiation
   if ((path === '/' || path === '') && wantsMarkdown(request)) {
     return text(AGENT_SURFACE.indexMd, 'text/markdown; charset=utf-8', {
       Link: '</index.md>; rel="alternate"; type="text/markdown"',
