@@ -1,0 +1,81 @@
+# Development Setup
+
+## Prerequisites
+
+- Node.js 22+ (CI uses 22; the weekly digest workflow uses 24).
+- pnpm 10+ (the `packageManager` field pins the exact version).
+- A Turso database (`turso db create`) and auth token.
+- A Cloudflare account with the `starboard` Worker and Workers AI binding.
+- A GitHub OAuth app (GitHub Developer Settings) with a redirect URI for
+  `AUTH_URL` (e.g. `http://localhost:3000/api/auth/callback/github` in dev).
+
+## Install
+
+```bash
+pnpm install
+```
+
+## Configure environment
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` (see [../operations/env.md](../operations/env.md) for the full
+list):
+
+- `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
+- `AUTH_SECRET` / `NEXTAUTH_SECRET` (`openssl rand -base64 32`)
+- `GITHUB_ID`, `GITHUB_SECRET` (GitHub OAuth)
+- `NEXTAUTH_URL` (e.g. `http://localhost:3000`)
+- `AI_GATEWAY_URL`, `AI_GATEWAY_API_KEY` (only needed for the Node/HTTP
+  embedding path; the Worker uses the `AI` binding)
+- Optional: `RAG_SERVICE_KEY`, `STARBOARD_RAG_INDEX_ID` for shared RAG search;
+  `RESEND_API_KEY`, `DIGEST_EMAIL_FROM` for weekly digest email.
+
+## Apply the schema
+
+```bash
+pnpm db:migrate        # tsx src/db/migrate.ts — applies schema.sql wholesale
+```
+
+The migrate runner includes `ensureEmbeddingDimension()` self-heal — see
+[../operations/runbooks/embedding-dimension-drift.md](../operations/runbooks/embedding-dimension-drift.md).
+
+## Run
+
+```bash
+pnpm dev               # next dev → http://localhost:3000
+```
+
+For the Cloudflare build path (bindings, Workers AI):
+
+```bash
+pnpm preview:cf        # build:cf + opennextjs-cloudflare preview
+```
+
+## Common commands
+
+See [commands.md](commands.md) for the full script map. The essentials:
+
+```bash
+pnpm typecheck         # tsc --noEmit
+pnpm test              # vitest run
+pnpm test:coverage     # vitest run --coverage
+pnpm test:e2e          # playwright
+pnpm lint              # biome check .
+pnpm format            # biome format --write .
+pnpm docs:check        # validate docs/ links + structure
+pnpm docs:dev          # blume dev (local docs site; requires pnpm add -D blume)
+pnpm docs:build        # blume build (presentation only; not part of production build)
+```
+
+## Landing page (Astro overlay)
+
+```bash
+pnpm --filter ./landing-astro dev
+```
+
+The landing is overlaid onto the OpenNext assets during `pnpm build:cf` via
+`scripts/overlay-astro-landing.mjs` — see
+[../operations/deploy.md](../operations/deploy.md).

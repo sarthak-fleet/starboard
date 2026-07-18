@@ -65,3 +65,11 @@ cache.bin
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Blume (documentation presentation layer — generated from docs/)
+.blume/
+.blume/dist/
+
+# Local agent logs / scratch
+.agent-logs/
+*.agent.log

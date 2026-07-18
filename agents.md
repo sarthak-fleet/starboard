@@ -1,113 +1,179 @@
-# agents.md — starboard
+# AGENTS.md — Starboard
 
-## Shared Fleet Standard
-
-Also read and follow the shared fleet-level agent standard at `../AGENTS.md`. Treat this repository as owned product code: protect production stability, keep changes scoped, verify work, and record durable follow-up tasks when something remains incomplete or blocked.
+> Agent bootloader. Concise by design — links to [`docs/`](docs/index.md) for
+> depth. Also follow the shared fleet standard at [`../AGENTS.md`](../AGENTS.md):
+> treat this repository as owned product code, protect production stability,
+> keep changes scoped, verify work, and record durable follow-up tasks when
+> something remains incomplete or blocked.
 
 ## Purpose
-GitHub stars organizer — sync, tag, and semantic vector search across your starred repositories.
 
-## Stack
-- Framework: Next.js 16 (App Router, React 19)
-- Language: TypeScript
-- Styling: Tailwind CSS v4 + shadcn/ui
-- DB: Turso (libSQL) — raw SQL, NO ORM. Schema in `src/db/schema.sql` (6 tables, 7 indexes + vector index)
-- Auth: NextAuth v5 beta (GitHub OAuth only — `read:user` scope)
-- State: nuqs (URL state for filters), SWR (client data fetching)
-- Testing: Vitest (unit in `src/__tests__/`)
-- Deploy: Cloudflare Workers (`starboard`) via @opennextjs/cloudflare
-- Package manager: pnpm
+GitHub stars organizer — sync, tag, and semantic vector search across your
+starred repositories. Fleet-aware recommendations, discovery, radar, alerts,
+and shareable insight reports. Live at
+[starboard.codevetter.com](https://starboard.codevetter.com). See
+[docs/product/overview.md](docs/product/overview.md).
 
-## Repo structure
+## Stack (one-liner)
+
+Next.js 16 (App Router, React 19) + TypeScript, Turso (libSQL, raw SQL — no ORM)
+with `F32_BLOB(768)` vectors, NextAuth v5 beta (GitHub OAuth), nuqs + SWR,
+Cloudflare Workers AI `@cf/baai/bge-base-en-v1.5`, deployed to Cloudflare
+Workers via `@opennextjs/cloudflare`. pnpm.
+
+## Essential commands
+
+```bash
+pnpm install
+pnpm dev               # next dev → http://localhost:3000
+pnpm build             # next build --webpack
+pnpm build:cf          # OpenNext Cloudflare build (production path)
+pnpm deploy:cf         # build:cf + wrangler deploy (manual; CI auto-deploys on push to main)
+pnpm typecheck         # tsc --noEmit
+pnpm test              # vitest run
+pnpm test:coverage     # vitest run --coverage
+pnpm test:e2e          # playwright
+pnpm lint              # biome check .
+pnpm db:migrate        # tsx src/db/migrate.ts (applies schema.sql + embedding dim self-heal)
+pnpm db:seed-popular   # cold-seed popular repos (≥5k stars) — used by daily GH Action
+pnpm db:seed-embeddings# backfill repo_embeddings
+pnpm fleet:extract-projects  # regenerate data/fleet-projects.generated.json
+pnpm docs:check        # validate docs/ links + structure
+pnpm docs:dev          # blume dev (local docs site; requires pnpm add -D blume)
+pnpm docs:build        # blume build (presentation only; not part of production build)
+```
+
+Full command map: [docs/development/commands.md](docs/development/commands.md).
+
+## Critical constraints
+
+- **Do not commit secrets.** `.env`, `.env.local`, `.dev.vars` are gitignored.
+  Verify `.gitignore` before any push.
+- **Do not push, deploy, run migrations, or open PRs without explicit user
+  approval.** Make changes locally and leave them staged/committed for review.
+- **Embedding dimension contract** — `EMBEDDING_DIM=768` is pinned across three
+  files that must change together: `src/lib/embeddings.ts`,
+  `src/db/schema.sql`, `src/db/migrate.ts`. The migrate runner self-heals drift
+  (`ensureEmbeddingDimension()`); do not hand-edit the Turso `repo_embeddings`
+  table. See
+  [docs/architecture/decisions/0006-embedding-dimension-contract.md](docs/architecture/decisions/0006-embedding-dimension-contract.md)
+  and
+  [docs/operations/runbooks/embedding-dimension-drift.md](docs/operations/runbooks/embedding-dimension-drift.md).
+- **`@libsql/client/web` import is load-bearing.** `src/db/index.ts` must import
+  from `@libsql/client/web` (not `@libsql/client`) and lazy-init via a Proxy.
+  Using the default import re-breaks the Worker. The CF build must use
+  `--webpack` (not Turbopack). See
+  [docs/architecture/decisions/0003-opennext-libsql-bundling.md](docs/architecture/decisions/0003-opennext-libsql-bundling.md).
+- **NextAuth v5 beta** — `trustHost: true` is hardcoded in `src/lib/auth.ts`
+  (env-driven `AUTH_TRUST_HOST` was unreliable). Both `AUTH_URL` and
+  `NEXTAUTH_URL` must be set in `wrangler.jsonc` vars. See
+  [docs/architecture/decisions/0002-nextauth-v5-beta.md](docs/architecture/decisions/0002-nextauth-v5-beta.md).
+- **No ORM.** Raw SQL via `@libsql/client`. Schema in `src/db/schema.sql`;
+  apply with `pnpm db:migrate`.
+- **Generated files — do not hand-edit:** `agent-edge.mjs`, `worker.mjs`,
+  `cloudflare-env.d.ts`, `data/fleet-projects.generated.json`. See
+  [docs/development/conventions.md](docs/development/conventions.md).
+- **Pre-push hook** (`.husky/pre-push`) runs Biome on changed files and scans
+  tracked files for common secret patterns. Re-stage modified files and retry.
+- **Do not modify agent skills, plugins, or agent-profile directories**
+  (`.claude/`, `.codex/`, `.symphony/`, `.clawpatch/`, any `SKILL.md`). They are
+  tooling, not product code.
+
+## Documentation navigation
+
+- **[docs/index.md](docs/index.md)** — canonical documentation hub. Start there.
+- **[STATUS.md](STATUS.md)** — short current-state view (objective, active work,
+  blockers, next steps).
+- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** — deeper product status (fleet
+  tooling reads this filename).
+- **[README.md](README.md)** — product readme for humans landing in the repo.
+- **[docs/product/](docs/product/)** — purpose, features, surfaces.
+- **[docs/architecture/](docs/architecture/)** — overview, data flow, ADRs.
+- **[docs/development/](docs/development/)** — setup, commands, conventions,
+  testing, OpenSpec.
+- **[docs/operations/](docs/operations/)** — deploy, env, CI/CD, jobs, runbooks.
+- **[docs/knowledge/](docs/knowledge/)** — current lessons, external references,
+  failed approaches.
+- **[docs/archive/](docs/archive/)** — historical records (pre-split ADRs,
+  plans, retros, security audit, OSS evaluation).
+- **[openspec/](openspec/)** — spec-driven change workflow tooling and archived
+  change proposals. See [docs/development/openspec.md](docs/development/openspec.md).
+- **[public/](public/)** — runtime agent-indexing surfaces (`llms.txt`,
+  `index.md`, `api-ai.json`, `robots.txt`, `sitemap.xml`). See
+  [docs/product/surfaces.md](docs/product/surfaces.md).
+
+## Documentation-maintenance rules
+
+1. **Markdown in `docs/` is the source of truth.** Code and executable config
+   remain authoritative for implementation details; docs explain *why*, not
+   *what the code does line-by-line*.
+2. **One home per fact.** Don't duplicate — link to the canonical home. If a
+   fact moves, update links rather than copying.
+3. **Prefer `docs/archive/` over deletion.** Move superseded docs with `git mv`,
+   give them a dated filename, and prepend a one-line historical marker pointing
+   at the current canonical doc. Preserve git rename history.
+4. **Mark unresolved questions explicitly** with `TBD:` or an "Open questions"
+   section. Do not invent answers.
+5. **Keep pages focused** (150–300 lines). Split when a page grows beyond
+   that.
+6. **Validate before commit.** Run `pnpm docs:check` (or
+   `node scripts/check-docs.mjs`) — it catches broken links, missing required
+   sections, and files outside the canonical structure. CI runs it in
+   `.github/workflows/docs.yml`.
+7. **Blume is presentation only.** `blume.config.ts` renders `docs/`; never
+   edit generated Blume output. Edit the Markdown and rebuild.
+
+## Repo structure (high level)
+
 ```
 src/
-  app/
-    page.tsx              # Landing / redirect
-    stars/                # Main dashboard (filter/sort/view logic)
-    explore/[...slug]/    # Repo detail (comments, votes, likes)
-    lists/[slug]/         # Public shared list page (SSR)
-    api/
-      auth/               # NextAuth
-      stars/              # GET (filtered) + sync/route.ts (POST sync)
-      lists/              # CRUD user lists
-      repos/[repoId]/     # Tags, list assignment, likes, comments
-  components/
-    repo-card.tsx
-    repo-grid.tsx         # Virtualized (@tanstack/react-virtual)
-    sidebar.tsx           # Language/list/tag filter sidebar
-    top-bar.tsx           # Search + sort controls
-    tag-picker.tsx
-    list-picker.tsx
-  hooks/                  # SWR data hooks (use-starred-repos, use-lists, use-repo-tags)
-  db/
-    index.ts              # Turso client singleton
-    schema.sql            # Full schema: 6 tables, 7 indexes + libsql_vector_idx
-    migrate.ts            # Migration runner
-    seed-embeddings.ts    # Backfill vector embeddings
-  lib/
-    github.ts             # Star sync (ETag caching)
-    github-lists.ts       # GitHub star lists (HTML scraping)
-    embeddings.ts         # Vector embedding generation
-    auth.ts               # NextAuth config
-docs/plans/               # Archived plans
+  app/                    # Next.js App Router: stars, explore, discover, projects, lists, radar, reports, api/*
+  components/             # repo-card, repo-grid (virtualized), sidebar, top-bar, tag/list pickers
+  hooks/                  # SWR data hooks
+  db/                     # index.ts (Turso client), schema.sql, migrate.ts, seed-embeddings.ts
+  lib/                    # github, github-lists, embeddings, auth, search, knowledgebase, fleet-projects, ...
+docs/                     # Canonical documentation (source of truth)
+scripts/                  # seed-popular, enrich-repos, enrich-tools, weekly-threshold-digest, check-docs, ...
+landing-astro/            # Astro landing page (overlaid into OpenNext assets during build:cf)
+openspec/                 # spec-driven change workflow tooling + archived changes
+public/                   # Agent-indexing surfaces (llms.txt, index.md, api-ai.json, robots.txt, sitemap.xml)
+data/fleet-projects.generated.json   # checked-in fleet snapshot for My Projects
+wrangler.jsonc            # Worker config: main=worker.mjs, ASSETS + AI + RAG_SERVICE bindings
+worker.mjs / agent-edge.mjs         # OpenNext-generated (do not hand-edit)
 ```
 
-## Key commands
-```bash
-pnpm dev                   # next dev (localhost:3000)
-pnpm build                 # next build
-pnpm test                  # vitest run
-pnpm db:migrate            # tsx src/db/migrate.ts
-pnpm db:seed-embeddings    # tsx src/db/seed-embeddings.ts
-```
+Detailed file map: [docs/architecture/overview.md](docs/architecture/overview.md).
 
-## Embedding dimension contract
-
-Canonical model: `@cf/baai/bge-base-en-v1.5` (Cloudflare Workers AI), **768 dimensions**.
-
-Three files are pinned to the same dimension and must change together:
-
-1. `src/lib/embeddings.ts` — `EMBEDDING_MODEL` and `EMBEDDING_DIM`. `generateEmbeddings()` asserts every returned vector matches `EMBEDDING_DIM` and throws on mismatch.
-2. `src/db/schema.sql` — `repo_embeddings.embedding F32_BLOB(<dim>)` plus the `libsql_vector_idx` cosine index built on it.
-3. `src/db/migrate.ts` — `ensureEmbeddingDimension()` reads `PRAGMA table_info(repo_embeddings)`, parses the `F32_BLOB(<n>)` column type, and drops the table + vector index when `<n>` doesn't equal `EMBEDDING_DIM`. The `CREATE TABLE IF NOT EXISTS` DDL in `schema.sql` then recreates them at the right dimension on the same migrate run.
-
-The seed-popular GitHub Action runs `pnpm db:migrate` before `pnpm db:seed-popular`, so dimension drift heals on the next daily run without manual DB surgery. Don't hand-edit the Turso table — the migrate path is the only safe one. To change the model:
-
-1. Update all three files above to the new dimension.
-2. Land the change on `main` — the next scheduled `seed-popular` run drops the old table, recreates it, and re-embeds from scratch (up to `SEED_DAILY_LIMIT` per day until the pool is refilled).
-
-## Architecture notes
-- **NO ORM** — raw SQL via `@libsql/client`. Schema in `src/db/schema.sql`. Apply with `db:migrate`.
-- **Vector search**: relevance search uses the shared Cloudflare `knowledgebase` Worker when `RAG_SERVICE_KEY` and `STARBOARD_RAG_INDEX_ID` are configured; it falls back only to lexical results when shared RAG is unavailable. `repo_embeddings` with `F32_BLOB(768)` and `libsql_vector_idx` remains for non-RAG Starboard features such as similar repos/discover/recommendations. Dimension contract enforced — see *Embedding dimension contract* above.
-- **nuqs**: all filter/sort state in URL params — shareable links. Search, sort, language, list, tag params all via nuqs.
-- **SWR**: all client data through SWR hooks. No React Query.
-- **Tags stored as JSON arrays** in `user_repos.tags` text column.
-- **ETag caching** for GitHub star sync — avoids redundant API calls.
-- **GitHub star lists** via HTML scraping (not official API).
-- **Facets**: language/list/tag counts computed server-side in `GET /api/stars`.
-- **Virtualized grid** via `@tanstack/react-virtual`.
-- **NextAuth v5 beta** (not v4 stable) — session shape differs. Access token stored for GitHub API sync.
-- **SaaS Maker**: feedback widget, testimonials, changelog-widget integrated. (SaaS Maker analytics removed — PostHog is the analytics path.)
-- Pre-push hook runs lint.
+## Fleet guidance
 
 <!-- FLEET-GUIDANCE:START -->
 
-## Fleet Guidance
-
 ### Adding Tasks
-- Add durable work items in SaaS Maker Cockpit Tasks when the task affects product behavior, deployment, user feedback, or fleet maintenance.
-- Include the project slug, a concise title, acceptance criteria, priority/status, and links to relevant code, issues, traces, or dashboards.
-- If task discovery starts locally in an editor or agent session, mirror the durable next step back into SaaS Maker before handoff.
+
+- Add durable work items in SaaS Maker Cockpit Tasks when the task affects
+  product behavior, deployment, user feedback, or fleet maintenance.
+- Include the project slug, a concise title, acceptance criteria,
+  priority/status, and links to relevant code, issues, traces, or dashboards.
+- If task discovery starts locally in an editor or agent session, mirror the
+  durable next step back into SaaS Maker before handoff.
 
 ### Using SaaS Maker
-- Treat SaaS Maker as the system of record for project metadata, feedback, tasks, analytics, testimonials, changelog, and fleet visibility.
-- Prefer API-first workflows through `fnd api`, the SDK, or widgets instead of one-off scripts when interacting with SaaS Maker features.
-- Keep this agent file aligned with the project record when operating rules, integrations, or deployment conventions change.
+
+- Treat SaaS Maker as the system of record for project metadata, feedback,
+  tasks, analytics, testimonials, changelog, and fleet visibility.
+- Prefer API-first workflows through `fnd api`, the SDK, or widgets instead of
+  one-off scripts when interacting with SaaS Maker features.
+- Keep this agent file aligned with the project record when operating rules,
+  integrations, or deployment conventions change.
 
 ### Free AI First
-- Prefer free/local AI paths for routine development and analysis: the `free-ai` gateway, local models, provider free tiers, and cached context.
-- Escalate to paid models only when complexity, correctness risk, or missing capability justifies the cost.
-- Note any paid-AI use in the task or handoff when it materially affects cost, reproducibility, or future maintenance.
+
+- Prefer free/local AI paths for routine development and analysis: the
+  `free-ai` gateway, local models, provider free tiers, and cached context.
+- Escalate to paid models only when complexity, correctness risk, or missing
+  capability justifies the cost.
+- Note any paid-AI use in the task or handoff when it materially affects cost,
+  reproducibility, or future maintenance.
 
 <!-- FLEET-GUIDANCE:END -->
 

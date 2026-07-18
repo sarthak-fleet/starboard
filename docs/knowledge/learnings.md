@@ -1,6 +1,11 @@
 # Engineering Lessons
 
-Concrete gotchas encountered building Starboard. Each lesson is evidenced by code or a git commit.
+Concrete gotchas encountered building Starboard. Each lesson is evidenced by
+code or a git commit and links to the relevant decision record where applicable.
+
+See also: [external-references.md](external-references.md) for authoritative
+sources, [failed-approaches.md](failed-approaches.md) for abandoned paths, and
+[../architecture/decisions/](../architecture/decisions/) for the *why*.
 
 ---
 

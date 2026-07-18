@@ -34,6 +34,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:mobile": "playwright test --project=mobile",
+    "docs:check": "node scripts/check-docs.mjs",
+    "docs:dev": "blume dev",
+    "docs:build": "blume build",
     "prepare": "husky"
   },
   "dependencies": {
