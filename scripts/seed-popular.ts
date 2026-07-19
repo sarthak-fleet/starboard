@@ -405,10 +405,8 @@ async function main() {
 
   const upserted = await walkAndUpsert(db, ghToken);
 
-  // Record the metadata-walk step. A walk that upserts zero rows where the
-  // pool already exists is acceptable on a catch-up run (cursor paused at
-  // the floor), so expected_min_output=0 here — the quality gate is on the
-  // embed step below.
+  // A zero-row walk is a verified no-op only because walkAndUpsert returns
+  // after successfully querying GitHub and preserving/resetting its cursor.
   recordStep({
     step: 'seed_walk',
     sourceWatermark: `cursor_after_walk`,
@@ -422,6 +420,8 @@ async function main() {
       'INSERT … ON CONFLICT(id) DO UPDATE for repos; INSERT OR IGNORE for repo_star_snapshots and repo_threshold_events',
     outputCount: upserted,
     expectedMinOutput: 0,
+    verifiedNoopReason:
+      upserted === 0 ? 'GitHub search walk completed and cursor state was preserved' : undefined,
   });
 
   console.info(`[embed] generating up to ${DAILY_LIMIT} embeddings`);
@@ -466,6 +466,10 @@ async function main() {
       'INSERT INTO repo_embeddings … ON CONFLICT(repo_id) DO UPDATE (text_hash guards drift)',
     outputCount: embedded,
     expectedMinOutput: 0,
+    verifiedNoopReason:
+      embedded === 0 && !embedError
+        ? 'Pending-embedding query completed with no hash-drift candidates'
+        : undefined,
     error: embedError,
   });
 
@@ -482,19 +486,25 @@ async function main() {
   const embeddedInPool = t.embedded_in_pool as number;
   console.info(`[done] pool ≥${MIN_STARS_FLOOR} stars: ${embeddedInPool}/${reposInPool} embedded`);
 
-  // Record pool-coverage evidence. Coverage ratio is the quality signal —
-  // a healthy pool has embeddings for most seeded repos. We do NOT fail the
-  // run on low coverage (catch-up is bounded by DAILY_LIMIT), but the
-  // manifest records the ratio for /api/health to surface.
-  recordStep({
+  // A populated searchable pool is the minimum end-to-end evidence. This
+  // prevents an all-zero refresh from exiting green even when individual
+  // bounded steps legitimately had no new work.
+  const coverageRecord = recordStep({
     step: 'seed_pool_coverage',
     sourceWatermark: null,
     bounds: { min_stars_floor: MIN_STARS_FLOOR },
     timeoutS: 60,
     idempotency: 'read-only aggregate',
     outputCount: embeddedInPool,
-    expectedMinOutput: 0,
+    expectedMinOutput: 1,
   });
+
+  if (embedError) {
+    throw new Error(embedError);
+  }
+  if (coverageRecord.quality_failed) {
+    throw new Error('Refresh quality verification failed: searchable pool evidence is missing');
+  }
 }
 
 main().catch((err) => {

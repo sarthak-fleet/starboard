@@ -5,8 +5,8 @@ treatment, and refresh-lifecycle controls. Source of truth for the
 `data-research-toolbox-automation` capability requirements: authoritative vs
 derived classification, reconstruction evidence, and refresh quality bounds.
 
-Live refresh state (watermark, last run, output counts, failure state) lives
-in `data/refresh-manifest.json` — see
+Per-run refresh state (watermark, output counts, failure state) is written to
+`data/refresh-manifest.json` and copied to that GitHub Actions run's summary — see
 [`refresh-manifest.md`](refresh-manifest.md) and
 [`jobs.md`](jobs.md).
 
@@ -84,8 +84,8 @@ Worker bundle is a cache of the source code; no data loss on redeploy.
 ## Refresh lifecycle controls
 
 The daily `seed-popular` GitHub Action records a structured manifest at
-`data/refresh-manifest.json` (operator-local; the Action writes to its
-ephemeral runner but the schema is documented for local runs) with:
+`data/refresh-manifest.json` and copies it to the existing GitHub Actions run
+summary before the ephemeral runner is discarded. The manifest includes:
 
 - `source_watermark` — GitHub Search cursor (`next_max_stars`/`next_page`)
   and run timestamp
@@ -98,10 +98,16 @@ ephemeral runner but the schema is documented for local runs) with:
 - `output_counts` — `upsertedThisRun`, `embedded`, pool totals
 - `quality_signal` — non-zero output check + pool coverage ratio
 - `freshness` — run wall-clock + delta from prior success
-- `failure_state` — durable record of the last unresolved failure (or `null`)
+- `failure_state` — unresolved failure state within that run's manifest
 
-A run that exits successfully with zero output where the declared expectation
-is non-zero fails quality verification and does **not** advance freshness.
+A zero-output step advances freshness only with an explicit verified-no-op
+reason. Missing evidence, an all-zero searchable pool, and embedding
+authentication failure make the refresh fail instead of exiting green.
+
+GitHub run summaries preserve per-run evidence, but they are not a cross-run
+state store. Starboard does not yet have a Foundry adapter that persists the
+latest refresh watermark/failure state or resolves failures across runs; that
+adapter remains an explicit operational gap.
 See [`refresh-manifest.md`](refresh-manifest.md) for the schema and the
 quality gate implementation in `src/lib/refresh-manifest.ts`.
 
@@ -109,13 +115,14 @@ quality gate implementation in `src/lib/refresh-manifest.ts`.
 
 | Surface | Health endpoint | Evidence |
 | --- | --- | --- |
-| Cloudflare Worker (public) | `GET /api/health` | build, live, revision, errors, latency, Turso reachability, last refresh watermark, search-bundle presence |
+| Cloudflare Worker (public) | `GET /api/health` | build, live, revision, sanitized errors, latency, real lexical-search probe |
 | Landing page | `GET /` (200 = ok) | Static HTML; independent of API health |
-| Search API | `GET /api/stars` (401 without session) | Auth-gated; `/api/health` reports `surfaces.search` independently from `surfaces.landing` |
+| Search API | `GET /api/stars` (401 without session) | Auth-gated; `/api/health` returns 503 when its lexical-search probe fails |
 | knowledgebase RAG | `GET /api/stars` relevance path | Falls back to lexical when RAG unavailable; `/api/health` reports `surfaces.rag` |
 
-Landing availability and search availability are reported independently — a
-live landing page with a broken search API must not report global health. See
+`/api/health` reports landing availability as `unverified`; it does not probe
+or infer the separate static landing surface. A broken required search probe
+returns 503 and must not report global health. See
 [`src/app/api/health/route.ts`](../../src/app/api/health/route.ts).
 
 ## Search activation evidence

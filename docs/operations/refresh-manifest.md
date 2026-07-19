@@ -7,13 +7,18 @@ requirement.
 
 ## Location
 
-`data/refresh-manifest.json` (gitignored — operator-local state). Written by
+`data/refresh-manifest.json` (gitignored, checkout-local state). Written by
 [`src/lib/refresh-manifest.ts`](../../src/lib/refresh-manifest.ts) on every
-`seed-popular` run and read by operators / future operator-only endpoints.
+`seed-popular` run and copied into the GitHub Actions run summary before the
+runner is discarded. The manifest path is injectable so tests and other
+callers can use isolated storage.
 The Cloudflare Worker `/api/health` route cannot read this file (edge
-runtime has no `node:fs`); it reports Turso reachability as the live
-Worker-side equivalent and points operators at this file for refresh
-watermark/freshness evidence.
+runtime has no `node:fs`); it probes lexical search as the live Worker-side
+equivalent and points operators at the Actions run summary for refresh evidence.
+
+The checkout-local file is not durable across GitHub runners. Run summaries
+retain per-run evidence, but there is currently no Foundry adapter for a
+cross-run latest-watermark/unresolved-failure view.
 
 ## Schema
 
@@ -28,7 +33,8 @@ watermark/freshness evidence.
       "idempotency": "INSERT … ON CONFLICT(id) DO UPDATE for repos; INSERT OR IGNORE for repo_star_snapshots and repo_threshold_events",
       "retries": {"maxAttempts": 4, "backoffBaseMs": 1000, "used": 0},
       "output_count": 312,
-      "quality_signal": {"expected_min_output": 0},
+      "evidence_status": "produced",
+      "quality_signal": {"expected_min_output": 0, "verified_noop_reason": null},
       "quality_failed": false,
       "error": null,
       "freshness": {"wall_clock": "2026-07-18T03:14:22Z", "delta_s_from_prior": 86412}
@@ -42,29 +48,32 @@ watermark/freshness evidence.
 
 ## Quality gate
 
-A step that exits successfully with `output_count < expected_min_output` is
-marked `quality_failed: true` and **does not advance freshness**
+A positive output that meets `expected_min_output` is `produced`. Zero output
+must include a concrete verified-no-op reason to be `verified_noop`; otherwise
+its evidence is `missing`. Missing or below-minimum evidence is marked
+`quality_failed: true` and **does not advance freshness**
 (`freshness.wall_clock` retains the prior successful run's value). This
 catches the "green job writes empty/poor output" failure mode that an exit
 code alone would miss.
 
 For `seed-popular`, `expected_min_output` is `0` on `seed_walk` and
-`seed_embed` because a catch-up run that finds no new repos or has no embed
-budget left is legitimate. The quality signal for the pool is the
-`seed_pool_coverage` step's `output_count` (embedded-in-pool count) and the
-ratio against the seeded-pool size, which operators inspect in the Action
-logs (`[done] pool ≥5000 stars: X/Y embedded`).
+`seed_embed`, but zero is accepted only after their upstream query completes
+and supplies the recorded verified-no-op reason. `seed_pool_coverage` requires
+at least one embedded repo, so an all-zero run fails. Embedding authentication
+failure is recorded as `failed` and also fails the job.
 
 `last_failure` records the most recent unresolved failure (step, time, error
-message). It is cleared when the failing step next succeeds.
+message) within one manifest. It is cleared when the failing step next succeeds
+while using that same manifest path. Missing files begin a new manifest;
+unreadable or malformed prior evidence fails instead of being overwritten.
 
 ## Steps tracked
 
 | Step | Source | Idempotency | Expected min output |
 | --- | --- | --- | --- |
 | `seed_walk` | GitHub Search (≥`MIN_STARS_FLOOR`) | `repos` upsert + `INSERT OR IGNORE` snapshots/events | 0 (catch-up runs are legitimate) |
-| `seed_embed` | Workers AI / free-ai gateway | `repo_embeddings` upsert keyed by `text_hash` | 0 (auth-failure skip is recorded, not fatal) |
-| `seed_pool_coverage` | Turso aggregate | read-only | 0 |
+| `seed_embed` | Workers AI / free-ai gateway | `repo_embeddings` upsert keyed by `text_hash` | 0 (verified no-pending-work only; auth failure fails the job) |
+| `seed_pool_coverage` | Turso aggregate | read-only | 1 |
 
 ## Activation counters
 

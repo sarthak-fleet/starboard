@@ -25,7 +25,7 @@ never sends:
 | `activated` | first successful star sync | `project_id` |
 | `core_action` | each sync / list-created action | `project_id`, `action` (`repos_synced`/`list_created`) |
 | `returned` | return session by a user with prior activity | `project_id` |
-| `search_outcome` | every `/api/stars` search with a query | `project_id`, `surface` (`lexical`/`semantic`/`discover`), `result_count_bucket` (`zero`/`1-5`/`6-20`/`21+`), `result_count_exact_capped` (≤100) |
+| `search_outcome` | every `/api/stars` search with a query | `project_id`, `surface` (`lexical`/`semantic`/`discover`), `result_count_bucket` (`zero`/`1-5`/`6-20`/`21+`) |
 | `result_inspection` | a user opens a repo detail from search results | `project_id`, `surface` (`repo_detail`) |
 | `digest_opened` | weekly maintainer digest rendered | `project_id`, `digest_id`, `item_count` |
 | `digest_item_actioned` | digest item reviewed/dismissed | `project_id`, `digest_id`, `item_id`, `group`, `action` |

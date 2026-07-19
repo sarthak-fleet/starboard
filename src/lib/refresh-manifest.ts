@@ -6,16 +6,15 @@
  * watermark, bounds, timeout, idempotency/dedup, retries, output counts /
  * quality signal, freshness, and durable failure state.
  *
- * The manifest is a single JSON file at `data/refresh-manifest.json` that is
- * overwritten on every run. A run that exits successfully with zero output
- * where the declared expectation is non-zero fails quality verification and
- * does NOT advance freshness.
+ * The manifest defaults to `data/refresh-manifest.json` and can be redirected
+ * by callers (notably tests). A zero-output run advances freshness only when
+ * the caller supplies explicit evidence that the no-op was verified.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
+const PROJECT_ROOT = resolve(__dirname, '..', '..');
 export const MANIFEST_PATH = resolve(PROJECT_ROOT, 'data', 'refresh-manifest.json');
 
 export const DEFAULT_RETRIES = { maxAttempts: 4, backoffBaseMs: 1000 } as const;
@@ -28,7 +27,11 @@ export interface RefreshStepRecord {
   idempotency: string;
   retries: { maxAttempts: number; backoffBaseMs: number; used: number };
   output_count: number;
-  quality_signal: { expected_min_output: number } | null;
+  evidence_status: 'produced' | 'verified_noop' | 'missing' | 'failed';
+  quality_signal: {
+    expected_min_output: number;
+    verified_noop_reason: string | null;
+  };
   quality_failed: boolean;
   error: string | null;
   freshness: { wall_clock: string | null; delta_s_from_prior: number | null };
@@ -54,20 +57,23 @@ function parseIso(s: string | null | undefined): number {
   return Number.isNaN(t) ? 0 : t / 1000;
 }
 
-function load(): RefreshManifestState {
+function load(manifestPath: string): RefreshManifestState {
   try {
-    const raw = readFileSync(MANIFEST_PATH, 'utf8');
+    const raw = readFileSync(manifestPath, 'utf8');
     const parsed = JSON.parse(raw) as RefreshManifestState;
     if (!parsed.runs) parsed.runs = {};
     return parsed;
-  } catch {
-    return { runs: {}, last_failure: null };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return { runs: {}, last_failure: null };
+    }
+    throw error;
   }
 }
 
-function save(state: RefreshManifestState): void {
-  mkdirSync(dirname(MANIFEST_PATH), { recursive: true });
-  writeFileSync(MANIFEST_PATH, JSON.stringify(state, null, 2));
+function save(state: RefreshManifestState, manifestPath: string): void {
+  mkdirSync(dirname(manifestPath), { recursive: true });
+  writeFileSync(manifestPath, JSON.stringify(state, null, 2));
 }
 
 export interface RecordStepInput {
@@ -78,18 +84,39 @@ export interface RecordStepInput {
   idempotency: string;
   outputCount: number;
   expectedMinOutput: number;
+  verifiedNoopReason?: string;
   error?: string | null;
   retriesUsed?: number;
 }
 
-export function recordStep(input: RecordStepInput): RefreshStepRecord {
-  const state = load();
+export interface RefreshManifestOptions {
+  manifestPath?: string;
+}
+
+export function recordStep(
+  input: RecordStepInput,
+  options: RefreshManifestOptions = {}
+): RefreshStepRecord {
+  const manifestPath = options.manifestPath ?? MANIFEST_PATH;
+  const state = load(manifestPath);
   const prior = state.runs[input.step];
   const priorFresh = prior?.freshness.wall_clock ?? null;
 
   const expectedMin = input.expectedMinOutput ?? 0;
-  const qualityFailed = !input.error && input.outputCount < expectedMin;
-  const succeeded = !input.error && !qualityFailed;
+  const verifiedNoop =
+    !input.error &&
+    input.outputCount === 0 &&
+    expectedMin === 0 &&
+    Boolean(input.verifiedNoopReason?.trim());
+  const evidenceStatus: RefreshStepRecord['evidence_status'] = input.error
+    ? 'failed'
+    : input.outputCount >= expectedMin && input.outputCount > 0
+      ? 'produced'
+      : verifiedNoop
+        ? 'verified_noop'
+        : 'missing';
+  const qualityFailed = evidenceStatus === 'missing';
+  const succeeded = evidenceStatus === 'produced' || evidenceStatus === 'verified_noop';
 
   const record: RefreshStepRecord = {
     step: input.step,
@@ -99,7 +126,11 @@ export function recordStep(input: RecordStepInput): RefreshStepRecord {
     idempotency: input.idempotency,
     retries: { ...DEFAULT_RETRIES, used: input.retriesUsed ?? 0 },
     output_count: input.outputCount,
-    quality_signal: { expected_min_output: expectedMin },
+    evidence_status: evidenceStatus,
+    quality_signal: {
+      expected_min_output: expectedMin,
+      verified_noop_reason: verifiedNoop ? input.verifiedNoopReason!.trim() : null,
+    },
     quality_failed: qualityFailed,
     error: input.error ?? null,
     freshness: {
@@ -114,14 +145,14 @@ export function recordStep(input: RecordStepInput): RefreshStepRecord {
     state.last_failure = {
       step: input.step,
       at: nowIso(),
-      error: input.error ?? 'quality_failed: zero output where non-zero expected',
+      error: input.error ?? 'quality_failed: output evidence missing or below the declared minimum',
       unresolved: true,
     };
   } else if (state.last_failure?.step === input.step) {
     state.last_failure = null;
   }
 
-  save(state);
+  save(state, manifestPath);
   return record;
 }
 
@@ -140,6 +171,8 @@ export async function withRetry(
     timeoutS: number;
     idempotency: string;
     expectedMinOutput: number;
+    verifiedNoopReason?: string;
+    manifestPath?: string;
   }
 ): Promise<RefreshStepRecord> {
   const maxAttempts = DEFAULT_RETRIES.maxAttempts;
@@ -164,23 +197,29 @@ export async function withRetry(
     }
   }
 
-  return recordStep({
-    step,
-    sourceWatermark: watermark,
-    bounds: opts.bounds,
-    timeoutS: opts.timeoutS,
-    idempotency: opts.idempotency,
-    outputCount,
-    expectedMinOutput: opts.expectedMinOutput,
-    error: lastError,
-    retriesUsed,
-  });
+  return recordStep(
+    {
+      step,
+      sourceWatermark: watermark,
+      bounds: opts.bounds,
+      timeoutS: opts.timeoutS,
+      idempotency: opts.idempotency,
+      outputCount,
+      expectedMinOutput: opts.expectedMinOutput,
+      verifiedNoopReason: opts.verifiedNoopReason,
+      error: lastError,
+      retriesUsed,
+    },
+    { manifestPath: opts.manifestPath }
+  );
 }
 
-export function readManifest(): RefreshManifestState {
-  return load();
+export function readManifest(options: RefreshManifestOptions = {}): RefreshManifestState {
+  return load(options.manifestPath ?? MANIFEST_PATH);
 }
 
-export function lastFailure(): RefreshManifestState['last_failure'] {
-  return load().last_failure;
+export function lastFailure(
+  options: RefreshManifestOptions = {}
+): RefreshManifestState['last_failure'] {
+  return load(options.manifestPath ?? MANIFEST_PATH).last_failure;
 }

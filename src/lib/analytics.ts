@@ -63,7 +63,6 @@ interface AnalyticsEventMap {
     project_id: typeof PROJECT;
     surface: SearchSurface;
     result_count_bucket: SearchResultBucket;
-    result_count_exact_capped: number;
   };
   /** A user opened a repo detail from search results. No repo identity sent. */
   result_inspection: { project_id: typeof PROJECT; surface: 'repo_detail' };
@@ -160,8 +159,7 @@ export function trackDigestItemActioned(
 /**
  * Fire one aggregate `search_outcome` event per search request. Carries NO
  * query text, repo IDs, repo full names, or user identifiers — only the
- * surface and the result-count bucket. `resultCount` is capped at 100 to
- * avoid leaking small-corpus size signals.
+ * surface and the result-count bucket. Exact counts are never emitted.
  */
 export function trackSearchOutcome(surface: SearchSurface, resultCount: number): void {
   const bucket: SearchResultBucket =
@@ -169,7 +167,6 @@ export function trackSearchOutcome(surface: SearchSurface, resultCount: number):
   emit('search_outcome', {
     surface,
     result_count_bucket: bucket,
-    result_count_exact_capped: Math.min(resultCount, 100),
   });
 }
 
