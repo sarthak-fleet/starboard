@@ -18,7 +18,7 @@ export interface RadarRepoInput {
   thresholdEventsThirtyDays?: number;
 }
 
-export interface RadarSignal {
+interface RadarSignal {
   lane: RadarLane;
   label: string;
   tone: 'good' | 'watch' | 'risk';
@@ -33,7 +33,7 @@ export interface RadarRepo extends RadarRepoInput {
   score: number;
 }
 
-export interface RadarSummary {
+interface RadarSummary {
   total: number;
   releaseCount: number;
   maintenanceCount: number;

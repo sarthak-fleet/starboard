@@ -26,7 +26,7 @@ function repoApiPath(fullName: string): string {
   return fullName.split('/').map(encodeURIComponent).join('/');
 }
 
-export async function fetchRepoReadmeText(
+async function fetchRepoReadmeText(
   accessToken: string,
   repo: StarboardRagRepo,
   fetchImpl: typeof fetch = fetch

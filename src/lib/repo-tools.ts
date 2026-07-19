@@ -1,4 +1,4 @@
-export type ToolCategory =
+type ToolCategory =
   | 'ai'
   | 'build'
   | 'cloud'

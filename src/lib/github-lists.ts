@@ -38,7 +38,7 @@ export async function fetchPublicStarListRepoNames(listHref: string): Promise<st
   return [...repos];
 }
 
-export function parsePublicStarLists(html: string, username: string): GitHubStarList[] {
+function parsePublicStarLists(html: string, username: string): GitHubStarList[] {
   const cards = html.matchAll(
     /<a\b(?=[^>]*class="[^"]*\bBox-row\b[^"]*")(?=[^>]*href="([^"]*\/stars\/[^"]+\/lists\/[^"]+)")[^>]*>([\s\S]*?)<\/a>/gi
   );
@@ -92,7 +92,7 @@ export function parsePublicStarLists(html: string, username: string): GitHubStar
   return lists;
 }
 
-export function parsePublicStarListRepoPage(html: string): {
+function parsePublicStarListRepoPage(html: string): {
   repoFullNames: string[];
   nextPageHref: string | null;
 } {

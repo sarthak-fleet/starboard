@@ -3,7 +3,7 @@ import GitHub from 'next-auth/providers/github';
 
 import { db } from '@/db';
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, auth } = NextAuth({
   trustHost: true,
   providers: [
     GitHub({

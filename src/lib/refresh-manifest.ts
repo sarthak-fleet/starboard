@@ -15,7 +15,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 const PROJECT_ROOT = resolve(__dirname, '..', '..');
-export const MANIFEST_PATH = resolve(PROJECT_ROOT, 'data', 'refresh-manifest.json');
+const MANIFEST_PATH = resolve(PROJECT_ROOT, 'data', 'refresh-manifest.json');
 
 export const DEFAULT_RETRIES = { maxAttempts: 4, backoffBaseMs: 1000 } as const;
 
@@ -216,10 +216,4 @@ export async function withRetry(
 
 export function readManifest(options: RefreshManifestOptions = {}): RefreshManifestState {
   return load(options.manifestPath ?? MANIFEST_PATH);
-}
-
-export function lastFailure(
-  options: RefreshManifestOptions = {}
-): RefreshManifestState['last_failure'] {
-  return load(options.manifestPath ?? MANIFEST_PATH).last_failure;
 }

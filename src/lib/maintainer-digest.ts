@@ -1,4 +1,4 @@
-export type DigestGroupId =
+type DigestGroupId =
   | 'newly_starred'
   | 'recent_releases'
   | 'high_momentum'

@@ -37,6 +37,8 @@
     "docs:check": "node scripts/check-docs.mjs",
     "docs:dev": "blume dev",
     "docs:build": "blume build",
+    "knip": "knip --no-exit-code --reporter symbols",
+    "knip:strict": "knip --reporter symbols",
     "prepare": "husky"
   },
   "dependencies": {
@@ -47,7 +49,6 @@
     "@tanstack/react-virtual": "3.13.24",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "cmdk": "1.1.1",
     "lucide-react": "1.11.0",
     "next": "16.2.4",
     "next-auth": "5.0.0-beta.31",
@@ -64,6 +65,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@opennextjs/cloudflare": "1.19.4",
+    "@playwright/test": "^1.51.1",
     "@tailwindcss/postcss": "4",
     "@types/node": "25.6.0",
     "@types/react": "19",
@@ -73,6 +75,7 @@
     "beasties": "^0.3.5",
     "blume": "1.0.4",
     "husky": "9.1.7",
+    "knip": "^6.6.3",
     "shadcn": "4.4.0",
     "tailwindcss": "4",
     "tsx": "^4.21.0",
