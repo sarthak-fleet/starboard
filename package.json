@@ -71,6 +71,7 @@
     "@vitest/coverage-v8": "4.1.5",
     "babel-plugin-react-compiler": "1.0.0",
     "beasties": "^0.3.5",
+    "blume": "1.0.4",
     "husky": "9.1.7",
     "shadcn": "4.4.0",
     "tailwindcss": "4",
