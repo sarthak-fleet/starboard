@@ -58,6 +58,22 @@ jobs:
           SEED_DAILY_LIMIT: ${{ github.event.inputs.daily_limit || '1000' }}
           MIN_STARS_FLOOR: '5000'
 
+      - name: Publish refresh evidence
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f data/refresh-manifest.json ]]; then
+            {
+              echo '### Refresh manifest'
+              echo '```json'
+              cat data/refresh-manifest.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '### Refresh manifest' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No manifest was produced; refresh evidence is missing.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Enrich tool intelligence
         run: pnpm db:enrich-tools
         env:

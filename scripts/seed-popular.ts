@@ -28,6 +28,7 @@
 import { type Client, createClient, type InStatement } from '@libsql/client';
 
 import { buildRepoEmbeddingText, generateEmbeddings, textHash } from '../src/lib/embeddings';
+import { recordStep } from '../src/lib/refresh-manifest';
 
 const DAILY_LIMIT = parseInt(process.env.SEED_DAILY_LIMIT || '1000', 10);
 const REQUESTED_METADATA_PAGE_LIMIT = parseInt(process.env.SEED_METADATA_PAGE_LIMIT || '120', 10);
@@ -333,7 +334,7 @@ async function saveCursor(db: Client, next_max_stars: number, next_page: number)
  * below the floor), reset cursor for the next pass — that's how new repos crossing
  * threshold get discovered on subsequent runs.
  */
-async function walkAndUpsert(db: Client, ghToken: string) {
+async function walkAndUpsert(db: Client, ghToken: string): Promise<number> {
   const cursor = await loadCursor(db);
   console.info(`[walk] resume cursor: max_stars=${cursor.next_max_stars} page=${cursor.next_page}`);
 
@@ -381,7 +382,7 @@ async function walkAndUpsert(db: Client, ghToken: string) {
     console.info(
       `[walk] paused after bounded ${pagesProcessed}-page run. upserted ${upsertedThisRun} repo rows; cursor preserved at max_stars=${max_stars} page=${page}.`
     );
-    return;
+    return upsertedThisRun;
   }
 
   // Walk complete. Reset cursor so the next run rediscovers from the top —
@@ -390,6 +391,7 @@ async function walkAndUpsert(db: Client, ghToken: string) {
   console.info(
     `[walk] complete after ${pagesProcessed} pages. upserted ${upsertedThisRun} repo rows. cursor reset.`
   );
+  return upsertedThisRun;
 }
 
 async function main() {
@@ -401,14 +403,49 @@ async function main() {
     authToken: process.env.TURSO_AUTH_TOKEN,
   });
 
-  await walkAndUpsert(db, ghToken);
+  const upserted = await walkAndUpsert(db, ghToken);
+
+  // A zero-row walk is a verified no-op only because walkAndUpsert returns
+  // after successfully querying GitHub and preserving/resetting its cursor.
+  recordStep({
+    step: 'seed_walk',
+    sourceWatermark: `cursor_after_walk`,
+    bounds: {
+      metadata_page_limit: METADATA_PAGE_LIMIT,
+      min_stars_floor: MIN_STARS_FLOOR,
+      max_pages_per_bucket: MAX_PAGES_PER_BUCKET,
+    },
+    timeoutS: 60 * 60,
+    idempotency:
+      'INSERT … ON CONFLICT(id) DO UPDATE for repos; INSERT OR IGNORE for repo_star_snapshots and repo_threshold_events',
+    outputCount: upserted,
+    expectedMinOutput: 0,
+    verifiedNoopReason:
+      upserted === 0 ? 'GitHub search walk completed and cursor state was preserved' : undefined,
+  });
 
   console.info(`[embed] generating up to ${DAILY_LIMIT} embeddings`);
   let embedded = 0;
+  let embedError: string | null = null;
   try {
     embedded = await embedPending(db, DAILY_LIMIT);
   } catch (err) {
-    if (!isEmbeddingAuthError(err)) throw err;
+    if (!isEmbeddingAuthError(err)) {
+      embedError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      recordStep({
+        step: 'seed_embed',
+        sourceWatermark: null,
+        bounds: { daily_limit: DAILY_LIMIT, batch_size: BATCH_SIZE },
+        timeoutS: 60 * 30,
+        idempotency:
+          'INSERT INTO repo_embeddings … ON CONFLICT(repo_id) DO UPDATE (text_hash guards drift)',
+        outputCount: 0,
+        expectedMinOutput: 0,
+        error: embedError,
+      });
+      throw err;
+    }
+    embedError = 'AI gateway authentication failed (skipped embeddings; repo seeding completed)';
     console.warn(
       '[embed] skipped: AI gateway authentication failed. Repo seeding completed; rotate/fix AI_GATEWAY_API_KEY to resume scheduled embeddings.'
     );
@@ -420,6 +457,22 @@ async function main() {
   }
   console.info(`[embed] generated ${embedded} embeddings`);
 
+  recordStep({
+    step: 'seed_embed',
+    sourceWatermark: null,
+    bounds: { daily_limit: DAILY_LIMIT, batch_size: BATCH_SIZE },
+    timeoutS: 60 * 30,
+    idempotency:
+      'INSERT INTO repo_embeddings … ON CONFLICT(repo_id) DO UPDATE (text_hash guards drift)',
+    outputCount: embedded,
+    expectedMinOutput: 0,
+    verifiedNoopReason:
+      embedded === 0 && !embedError
+        ? 'Pending-embedding query completed with no hash-drift candidates'
+        : undefined,
+    error: embedError,
+  });
+
   const totals = await executeDb(
     db,
     `SELECT
@@ -429,9 +482,29 @@ async function main() {
           WHERE r.stargazers_count >= ${MIN_STARS_FLOOR}) AS embedded_in_pool`
   );
   const t = totals.rows[0]!;
-  console.info(
-    `[done] pool ≥${MIN_STARS_FLOOR} stars: ${t.embedded_in_pool}/${t.repos_in_pool} embedded`
-  );
+  const reposInPool = t.repos_in_pool as number;
+  const embeddedInPool = t.embedded_in_pool as number;
+  console.info(`[done] pool ≥${MIN_STARS_FLOOR} stars: ${embeddedInPool}/${reposInPool} embedded`);
+
+  // A populated searchable pool is the minimum end-to-end evidence. This
+  // prevents an all-zero refresh from exiting green even when individual
+  // bounded steps legitimately had no new work.
+  const coverageRecord = recordStep({
+    step: 'seed_pool_coverage',
+    sourceWatermark: null,
+    bounds: { min_stars_floor: MIN_STARS_FLOOR },
+    timeoutS: 60,
+    idempotency: 'read-only aggregate',
+    outputCount: embeddedInPool,
+    expectedMinOutput: 1,
+  });
+
+  if (embedError) {
+    throw new Error(embedError);
+  }
+  if (coverageRecord.quality_failed) {
+    throw new Error('Refresh quality verification failed: searchable pool evidence is missing');
+  }
 }
 
 main().catch((err) => {
