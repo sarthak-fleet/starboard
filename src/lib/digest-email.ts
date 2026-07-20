@@ -8,7 +8,7 @@ import type { WeeklyAlertDigest, WeeklyAlertItem } from '@/lib/weekly-alerts';
  * lives in scripts/send-weekly-digest-emails.ts via src/lib/email.ts.
  */
 
-export const MAX_HIGHLIGHTS = 5;
+const MAX_HIGHLIGHTS = 5;
 
 const LANE_LABELS: Record<AlertLane, string> = {
   release: 'Release',
@@ -34,7 +34,7 @@ export interface DigestEmail {
   highlights: WeeklyAlertItem[];
 }
 
-export function escapeHtml(value: string): string {
+function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -44,7 +44,7 @@ export function escapeHtml(value: string): string {
 }
 
 /** Top alerts, one per repo, capped at MAX_HIGHLIGHTS. Digest alerts are already priority-sorted. */
-export function pickHighlights(digest: WeeklyAlertDigest): WeeklyAlertItem[] {
+function pickHighlights(digest: WeeklyAlertDigest): WeeklyAlertItem[] {
   const seen = new Set<number>();
   const highlights: WeeklyAlertItem[] = [];
   for (const alert of digest.alerts) {

@@ -12,14 +12,14 @@ export interface InsightReportSnapshot {
   sections: InsightReportSection[];
 }
 
-export interface InsightReportSection {
+interface InsightReportSection {
   id: string;
   title: string;
   description: string;
   items: InsightReportItem[];
 }
 
-export interface InsightReportItem {
+interface InsightReportItem {
   id: string;
   title: string;
   detail: string;
@@ -28,7 +28,7 @@ export interface InsightReportItem {
   metadata?: Record<string, string | number | null>;
 }
 
-export interface PublicInsightReport {
+interface PublicInsightReport {
   slug: string;
   type: InsightReportType;
   title: string;

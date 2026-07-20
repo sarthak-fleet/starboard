@@ -52,10 +52,6 @@ function serviceBinding(): ServiceBinding | null {
   return cloudflareEnv().RAG_SERVICE ?? null;
 }
 
-export function isRagServiceConfigured(): boolean {
-  return Boolean(serviceKey() && indexId());
-}
-
 async function ragFetch(path: string, init: RequestInit): Promise<Response> {
   const key = serviceKey();
   if (!key) throw new Error('RAG_SERVICE_KEY is not configured');

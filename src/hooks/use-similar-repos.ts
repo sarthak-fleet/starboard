@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 
-export interface SimilarRepo {
+interface SimilarRepo {
   id: number;
   name: string;
   full_name: string;

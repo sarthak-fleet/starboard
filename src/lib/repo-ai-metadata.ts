@@ -3,11 +3,11 @@ import { textHash } from './embeddings';
 const REASONING_EFFORTS = ['auto', 'low', 'medium', 'high'] as const;
 const MIN_REASONING_LEVELS = ['low', 'medium', 'high'] as const;
 
-export const REPO_AI_METADATA_REASONING_EFFORT = normalizeReasoningEffort(
+const REPO_AI_METADATA_REASONING_EFFORT = normalizeReasoningEffort(
   process.env.AI_GATEWAY_REASONING_EFFORT,
   'medium'
 );
-export const REPO_AI_METADATA_MIN_REASONING_LEVEL = normalizeMinReasoningLevel(
+const REPO_AI_METADATA_MIN_REASONING_LEVEL = normalizeMinReasoningLevel(
   process.env.AI_GATEWAY_MIN_REASONING_LEVEL,
   'medium'
 );

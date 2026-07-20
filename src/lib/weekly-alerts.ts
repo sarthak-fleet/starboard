@@ -195,7 +195,3 @@ export function filterRadarAlerts(
     })
     .filter((item): item is WeeklyAlertItem => item !== null);
 }
-
-export function previewRadarRepo(repo: RadarRepoInput, now = new Date()): RadarRepo {
-  return analyzeRadarRepo(repo, now);
-}

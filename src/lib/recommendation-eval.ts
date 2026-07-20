@@ -11,13 +11,13 @@ import { rrfFuse } from '@/lib/search';
 
 export type RecommendationScorer = 'deterministic' | 'hybrid-rrf';
 
-export interface RecommendationEvalExpectation {
+interface RecommendationEvalExpectation {
   fullName: string;
   featureAreaId: string;
   reasonIncludes?: string[];
 }
 
-export interface SuppressionExpectation {
+interface SuppressionExpectation {
   fullName: string;
   reason: 'dependency' | 'archived' | 'lowSignal';
 }
@@ -34,7 +34,7 @@ export interface RecommendationEvalFixture {
   };
 }
 
-export interface RecommendationEvalHit {
+interface RecommendationEvalHit {
   fullName: string;
   featureAreaId: string;
   rank: number;

@@ -15,7 +15,7 @@
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
 /** Resend sandbox sender — only delivers to the account owner. Set DIGEST_EMAIL_FROM in prod. */
-export const DEFAULT_FROM = 'Starboard <onboarding@resend.dev>';
+const DEFAULT_FROM = 'Starboard <onboarding@resend.dev>';
 
 export interface EmailMessage {
   to: string;

@@ -31,7 +31,7 @@ export interface StackCandidate extends StackRepoInput {
   compatibilityNotes: string[];
 }
 
-export interface StackRole {
+interface StackRole {
   id: StackRoleId;
   label: string;
   summary: string;
